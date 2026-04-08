@@ -10,6 +10,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { VillaModule } from './modules/villa/villa.module';
 import { OrderModule } from './modules/order/order.module';
 import { AdminModule } from './modules/admin/admin.module';
+import { AiModule } from './modules/ai/ai.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { AdminModule } from './modules/admin/admin.module';
     VillaModule,
     OrderModule,
     AdminModule,
+    AiModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: AllExceptionsFilter },
