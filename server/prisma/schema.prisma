@@ -36,6 +36,7 @@ model Villa {
   calendars  VillaCalendar[]
   orders     Order[]
   reviews    Review[]
+  groupBuys  GroupBuy[]
 
   @@map("villa")
 }
@@ -122,6 +123,8 @@ model User {
   sharePayments  SharePayment[]
   createdAlbums  Album[]       @relation("AlbumCreator")
   uploadedPhotos AlbumPhoto[]  @relation("PhotoUploader")
+  initiatedGroups GroupBuy[]   @relation("GroupInitiator")
+  groupMemberships GroupMember[]
 
   @@map("user")
 }
@@ -160,6 +163,7 @@ model Order {
   reviews       Review[]
   shares        OrderShare[]
   albums        Album[]
+  tasks         OrderTask[]
 
   @@map("order")
 }
@@ -328,6 +332,78 @@ model AlbumPhoto {
   user  User  @relation("PhotoUploader", fields: [userId], references: [id])
 
   @@map("album_photo")
+}
+
+// ==================== 氛围包 ====================
+
+model ThemePack {
+  id          BigInt  @id @default(autoincrement())
+  name        String  @db.VarChar(100) // 赛博朋克之夜、复古迪斯科等
+  description String? @db.Text
+  theme       String  @db.VarChar(50) // 赛博朋克/复古/露营/ins风/派对
+  coverImage  String? @map("cover_image") @db.VarChar(500)
+  price       Decimal @db.Decimal(10, 2) // 打包价
+  originalPrice Decimal? @map("original_price") @db.Decimal(10, 2) // 单买总价
+  items       String? @db.Text // JSON: 包含的物品清单
+  status      Int     @default(1) @db.TinyInt
+  sortOrder   Int     @default(0) @map("sort_order")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("theme_pack")
+}
+
+// ==================== 拼团裂变 ====================
+
+model GroupBuy {
+  id          BigInt   @id @default(autoincrement())
+  villaId     BigInt   @map("villa_id")
+  initiatorId BigInt   @map("initiator_id")
+  checkIn     DateTime @map("check_in") @db.Date
+  checkOut    DateTime @map("check_out") @db.Date
+  targetCount Int      @map("target_count") // 目标人数（如5人成团）
+  discount    Decimal  @db.Decimal(10, 2) // 拼团优惠金额
+  status      Int      @default(0) @db.TinyInt // 0-拼团中 1-已成团 2-已过期 3-已取消
+  expireAt    DateTime @map("expire_at") // 拼团截止时间
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  villa     Villa         @relation(fields: [villaId], references: [id])
+  initiator User          @relation("GroupInitiator", fields: [initiatorId], references: [id])
+  members   GroupMember[]
+
+  @@map("group_buy")
+}
+
+model GroupMember {
+  id        BigInt   @id @default(autoincrement())
+  groupId   BigInt   @map("group_id")
+  userId    BigInt   @map("user_id")
+  status    Int      @default(0) @db.TinyInt // 0-已加入 1-已支付
+  createdAt DateTime @default(now()) @map("created_at")
+
+  group GroupBuy @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user  User     @relation(fields: [userId], references: [id])
+
+  @@unique([groupId, userId])
+  @@map("group_member")
+}
+
+// ==================== 入住任务清单 ====================
+
+model OrderTask {
+  id        BigInt   @id @default(autoincrement())
+  orderId   BigInt   @map("order_id")
+  sortOrder Int      @default(0) @map("sort_order")
+  title     String   @db.VarChar(200)
+  detail    String?  @db.Text
+  dueDate   DateTime? @map("due_date") // 截止时间
+  done      Int      @default(0) @db.TinyInt // 0-未完成 1-已完成
+  category  String?  @db.VarChar(50) // before_checkin/during/after
+  createdAt DateTime @default(now()) @map("created_at")
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@map("order_task")
 }
 
 // ==================== 管理员 ====================

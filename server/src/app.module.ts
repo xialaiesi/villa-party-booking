@@ -14,6 +14,10 @@ import { AiModule } from './modules/ai/ai.module';
 import { ActivityPlanModule } from './modules/activity-plan/activity-plan.module';
 import { OrderShareModule } from './modules/order-share/order-share.module';
 import { AlbumModule } from './modules/album/album.module';
+import { SmartRecommendModule } from './modules/smart-recommend/smart-recommend.module';
+import { ThemePackModule } from './modules/theme-pack/theme-pack.module';
+import { GroupBuyModule } from './modules/group-buy/group-buy.module';
+import { OrderTaskModule } from './modules/order-task/order-task.module';
 
 @Module({
   imports: [
@@ -28,6 +32,10 @@ import { AlbumModule } from './modules/album/album.module';
     ActivityPlanModule,
     OrderShareModule,
     AlbumModule,
+    SmartRecommendModule,
+    ThemePackModule,
+    GroupBuyModule,
+    OrderTaskModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: AllExceptionsFilter },

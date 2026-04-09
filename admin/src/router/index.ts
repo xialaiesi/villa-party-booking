@@ -18,6 +18,7 @@ const routes = [
       { path: 'order', component: () => import('../views/order/index.vue'), meta: { title: '订单管理' } },
       { path: 'facility', component: () => import('../views/facility/index.vue'), meta: { title: '设施管理' } },
       { path: 'activity-plan', component: () => import('../views/activity-plan/index.vue'), meta: { title: '活动方案' } },
+      { path: 'theme-pack', component: () => import('../views/theme-pack/index.vue'), meta: { title: '氛围包' } },
     ],
   },
 ];

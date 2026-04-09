@@ -43,6 +43,22 @@
     {
       "path": "pages/album/index",
       "style": { "navigationBarTitleText": "聚会回忆" }
+    },
+    {
+      "path": "pages/smart/index",
+      "style": { "navigationBarTitleText": "智能选墅" }
+    },
+    {
+      "path": "pages/theme-pack/index",
+      "style": { "navigationBarTitleText": "氛围包" }
+    },
+    {
+      "path": "pages/group/index",
+      "style": { "navigationBarTitleText": "拼团" }
+    },
+    {
+      "path": "pages/checklist/index",
+      "style": { "navigationBarTitleText": "入住清单" }
     }
   ],
   "globalStyle": {
