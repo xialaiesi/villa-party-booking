@@ -176,11 +176,12 @@
             <el-image
               v-for="(img, i) in importResult.images.slice(0, 6)"
               :key="i"
-              :src="img"
+              :src="resolveUrl(img)"
               fit="cover"
               style="width: 80px; height: 60px; margin: 4px; border-radius: 4px;"
-              :preview-src-list="importResult.images"
+              :preview-src-list="importResult.images.map(resolveUrl)"
               :initial-index="i"
+              preview-teleported
             />
             <span v-if="importResult.images.length > 6">...+{{ importResult.images.length - 6 }}</span>
           </div>
