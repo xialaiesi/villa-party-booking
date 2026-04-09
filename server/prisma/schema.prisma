@@ -180,11 +180,12 @@ model Package {
 
 model User {
   id        BigInt   @id @default(autoincrement())
-  openid    String   @unique @db.VarChar(64)
+  openid    String?  @unique @db.VarChar(64)
   unionId   String?  @map("union_id") @db.VarChar(64)
   nickname  String?  @db.VarChar(50)
   avatar    String?  @db.VarChar(500)
-  phone     String?  @db.VarChar(20)
+  phone     String?  @unique @db.VarChar(20)
+  password  String?  @db.VarChar(255) // PC端登录密码
   createdAt DateTime @default(now()) @map("created_at")
 
   orders         Order[]

@@ -34,5 +34,8 @@ miniapp/unpackage/
 # Admin
 admin/dist/
 
+# Web
+web/dist/
+
 # Uploaded files
 server/uploads/

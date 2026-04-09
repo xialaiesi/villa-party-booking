@@ -13,6 +13,22 @@ export class AuthController {
     return this.authService.wxLogin(code);
   }
 
+  @Public()
+  @Post('register')
+  async register(
+    @Body('phone') phone: string,
+    @Body('password') password: string,
+    @Body('nickname') nickname?: string,
+  ) {
+    return this.authService.register(phone, password, nickname);
+  }
+
+  @Public()
+  @Post('login')
+  async login(@Body('phone') phone: string, @Body('password') password: string) {
+    return this.authService.loginByPhone(phone, password);
+  }
+
   @Get('profile')
   async getProfile(@CurrentUser('sub') userId: number) {
     return this.authService.getProfile(userId);

@@ -1,7 +1,8 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, BadRequestException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
+import * as crypto from 'crypto';
 
 @Injectable()
 export class AuthService {
@@ -10,6 +11,52 @@ export class AuthService {
     private jwtService: JwtService,
     private configService: ConfigService,
   ) {}
+
+  private hashPwd(pwd: string) {
+    return crypto.createHash('sha256').update(pwd).digest('hex');
+  }
+
+  /** PC 端注册 */
+  async register(phone: string, password: string, nickname?: string) {
+    if (!phone || !password) throw new BadRequestException('手机号和密码不能为空');
+    if (password.length < 6) throw new BadRequestException('密码至少 6 位');
+
+    const existing = await this.prisma.user.findFirst({ where: { phone } });
+    if (existing) throw new BadRequestException('该手机号已注册');
+
+    const user = await this.prisma.user.create({
+      data: {
+        phone,
+        password: this.hashPwd(password),
+        nickname: nickname || `用户${phone.slice(-4)}`,
+      },
+    });
+
+    const token = this.jwtService.sign({
+      sub: Number(user.id),
+      phone: user.phone,
+      type: 'user',
+    });
+    return { token, user: this.sanitizeUser(user) };
+  }
+
+  /** PC 端手机号登录 */
+  async loginByPhone(phone: string, password: string) {
+    if (!phone || !password) throw new BadRequestException('手机号和密码不能为空');
+
+    const user = await this.prisma.user.findFirst({ where: { phone } });
+    if (!user || !user.password) throw new UnauthorizedException('用户不存在或密码未设置');
+    if (user.password !== this.hashPwd(password)) {
+      throw new UnauthorizedException('手机号或密码错误');
+    }
+
+    const token = this.jwtService.sign({
+      sub: Number(user.id),
+      phone: user.phone,
+      type: 'user',
+    });
+    return { token, user: this.sanitizeUser(user) };
+  }
 
   /**
    * 微信小程序登录
