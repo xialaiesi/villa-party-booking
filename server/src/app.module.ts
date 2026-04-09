@@ -23,6 +23,8 @@ import { CommunityModule } from './modules/community/community.module';
 import { CorporateModule } from './modules/corporate/corporate.module';
 import { SeasonalEventModule } from './modules/seasonal-event/seasonal-event.module';
 import { AiPlannerModule } from './modules/ai-planner/ai-planner.module';
+import { PackageModule } from './modules/package/package.module';
+import { FacilityModule } from './modules/facility/facility.module';
 
 @Module({
   imports: [
@@ -46,6 +48,8 @@ import { AiPlannerModule } from './modules/ai-planner/ai-planner.module';
     CorporateModule,
     SeasonalEventModule,
     AiPlannerModule,
+    PackageModule,
+    FacilityModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: AllExceptionsFilter },

@@ -4,6 +4,7 @@ import { ConfigService } from '@nestjs/config';
 import { AdminAuthController } from './admin-auth.controller';
 import { AdminVillaController } from './admin-villa.controller';
 import { AdminOrderController } from './admin-order.controller';
+import { DashboardController } from './dashboard.controller';
 import { AdminService } from './admin.service';
 import { VillaModule } from '../villa/villa.module';
 
@@ -22,6 +23,7 @@ import { VillaModule } from '../villa/villa.module';
     AdminAuthController,
     AdminVillaController,
     AdminOrderController,
+    DashboardController,
   ],
   providers: [AdminService],
 })
