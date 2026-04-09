@@ -55,4 +55,18 @@ export class VillaController {
       parseInt(month) || new Date().getMonth() + 1,
     );
   }
+
+  @Public()
+  @Get(':id/reviews')
+  async reviews(
+    @Param('id', ParseIntPipe) id: number,
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
+  ) {
+    return this.villaService.getReviews(
+      id,
+      page ? parseInt(page) : 1,
+      pageSize ? parseInt(pageSize) : 10,
+    );
+  }
 }

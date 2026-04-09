@@ -33,6 +33,13 @@ export function getVillaReviews(id: number, page = 1, pageSize = 10) {
   });
 }
 
+export function getVillaPlans(guests?: number) {
+  return request<any[]>({
+    url: '/api/activity-plans',
+    params: guests ? { guests } : undefined,
+  });
+}
+
 export function listFacilities() {
   return request<any[]>({ url: '/api/facilities' });
 }

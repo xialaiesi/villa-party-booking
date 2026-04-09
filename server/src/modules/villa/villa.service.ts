@@ -120,6 +120,41 @@ export class VillaService {
     return days;
   }
 
+  async getReviews(villaId: number, page = 1, pageSize = 10) {
+    const [list, total, stats] = await Promise.all([
+      this.prisma.review.findMany({
+        where: { villaId },
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+        include: {
+          user: { select: { nickname: true, avatar: true } },
+        },
+      }),
+      this.prisma.review.count({ where: { villaId } }),
+      this.prisma.review.aggregate({
+        _avg: { rating: true },
+        where: { villaId },
+      }),
+    ]);
+
+    return {
+      list: list.map((r: any) => ({
+        id: Number(r.id),
+        userId: Number(r.userId),
+        rating: r.rating,
+        content: r.content,
+        images: r.images ? JSON.parse(r.images) : [],
+        createdAt: r.createdAt,
+        user: r.user,
+      })),
+      total,
+      page,
+      pageSize,
+      avgRating: Number(stats._avg.rating || 0).toFixed(1),
+    };
+  }
+
   private formatVilla(villa: any) {
     return {
       ...villa,

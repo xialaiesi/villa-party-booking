@@ -26,6 +26,8 @@ import { AiPlannerModule } from './modules/ai-planner/ai-planner.module';
 import { PackageModule } from './modules/package/package.module';
 import { FacilityModule } from './modules/facility/facility.module';
 import { MerchantModule } from './modules/merchant/merchant.module';
+import { HomeModule } from './modules/home/home.module';
+import { MessageModule } from './modules/message/message.module';
 
 @Module({
   imports: [
@@ -52,6 +54,8 @@ import { MerchantModule } from './modules/merchant/merchant.module';
     PackageModule,
     FacilityModule,
     MerchantModule,
+    HomeModule,
+    MessageModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: AllExceptionsFilter },

@@ -75,6 +75,14 @@
     {
       "path": "pages/planner/index",
       "style": { "navigationBarTitleText": "AI 趴体策划师" }
+    },
+    {
+      "path": "pages/community/post",
+      "style": { "navigationBarTitleText": "发布帖子" }
+    },
+    {
+      "path": "pages/message/index",
+      "style": { "navigationBarTitleText": "消息中心" }
     }
   ],
   "globalStyle": {
@@ -91,6 +99,12 @@
       {
         "pagePath": "pages/index/index",
         "text": "首页",
+        "iconPath": "static/tab/home.png",
+        "selectedIconPath": "static/tab/home-active.png"
+      },
+      {
+        "pagePath": "pages/community/index",
+        "text": "趴友圈",
         "iconPath": "static/tab/home.png",
         "selectedIconPath": "static/tab/home-active.png"
       },
