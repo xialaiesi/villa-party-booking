@@ -1,7 +1,18 @@
 import { Injectable, BadRequestException, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as cheerio from 'cheerio';
+import { writeFileSync, existsSync, mkdirSync } from 'fs';
+import { join } from 'path';
+import { imageSize } from 'image-size';
+import puppeteer from 'puppeteer';
 import OpenAI from 'openai';
+
+const UPLOAD_DIR = 'uploads';
+if (!existsSync(UPLOAD_DIR)) mkdirSync(UPLOAD_DIR, { recursive: true });
+
+/** 图片过滤阈值 */
+const MIN_IMAGE_WIDTH = 400;
+const MIN_IMAGE_HEIGHT = 300;
 
 export interface ImportedData {
   title: string;
@@ -47,22 +58,28 @@ export class ImportService {
       throw new BadRequestException('无效的 URL');
     }
 
-    let html: string;
+    // 使用 Puppeteer 启动真实浏览器，触发懒加载
+    let parsed: ImportedData;
     try {
+      parsed = await this.fetchWithPuppeteer(url);
+    } catch (e: any) {
+      this.logger.error(`Puppeteer 抓取失败: ${e.message}，降级为静态抓取`);
+      // 降级为普通 fetch
       const res = await fetch(url, {
         headers: {
           'User-Agent':
-            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
         },
       });
       if (!res.ok) throw new BadRequestException(`抓取失败: HTTP ${res.status}`);
-      html = await res.text();
-    } catch (e: any) {
-      this.logger.error(`抓取失败: ${e.message}`);
-      throw new BadRequestException(`抓取页面失败: ${e.message}`);
+      const html = await res.text();
+      parsed = this.parseHtml(html);
     }
 
-    const parsed = this.parseHtml(html);
+    // 下载图片到本地并按尺寸过滤
+    this.logger.log(`原始抓取到 ${parsed.images.length} 张图片，开始下载过滤...`);
+    parsed.images = await this.downloadAndFilterImages(parsed.images);
+    this.logger.log(`过滤后剩余 ${parsed.images.length} 张图片`);
 
     // 使用 AI 提取结构化数据
     let aiSuccess = false;
@@ -83,6 +100,118 @@ export class ImportService {
     }
 
     return parsed;
+  }
+
+  /**
+   * 使用 Puppeteer 启动真实浏览器抓取
+   * 模拟滚动以触发懒加载，等待所有图片加载完成
+   */
+  private async fetchWithPuppeteer(url: string): Promise<ImportedData> {
+    const browser = await puppeteer.launch({
+      headless: true,
+      args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    });
+
+    try {
+      const page = await browser.newPage();
+      await page.setViewport({ width: 1280, height: 900 });
+      await page.setUserAgent(
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      );
+
+      this.logger.log(`🌐 Puppeteer 加载页面: ${url}`);
+      await page.goto(url, { waitUntil: 'networkidle2', timeout: 30000 });
+
+      // 滚动到底部触发懒加载
+      await this.autoScroll(page);
+
+      // 再等 2 秒让图片加载
+      await new Promise((r) => setTimeout(r, 2000));
+
+      // 提取数据
+      const result = await page.evaluate(() => {
+        const title = document.title || '';
+        const description =
+          document
+            .querySelector('meta[name="description"]')
+            ?.getAttribute('content') || '';
+
+        const imgSet = new Set<string>();
+
+        // 1. 所有 img 标签（已加载）
+        document.querySelectorAll('img').forEach((img: any) => {
+          const src = img.src || img.dataset.src || img.dataset.original;
+          if (src && src.startsWith('http')) imgSet.add(src);
+        });
+
+        // 2. 所有元素的 background-image
+        document.querySelectorAll('*').forEach((el: any) => {
+          const bg = window.getComputedStyle(el).backgroundImage;
+          if (bg && bg !== 'none') {
+            const match = bg.match(/url\(["']?(https?:\/\/[^"')]+)/);
+            if (match) imgSet.add(match[1]);
+          }
+        });
+
+        // 正文
+        const bodyText = document.body?.innerText?.replace(/\s+/g, ' ').trim() || '';
+
+        return {
+          title,
+          description,
+          rawText: bodyText.slice(0, 3000),
+          images: Array.from(imgSet),
+        };
+      });
+
+      return {
+        title: result.title.slice(0, 100),
+        description: result.description.slice(0, 500),
+        rawText: result.rawText,
+        images: this.filterImageUrls(result.images).slice(0, 30),
+      };
+    } finally {
+      await browser.close();
+    }
+  }
+
+  /** 自动滚动到页面底部触发懒加载 */
+  private async autoScroll(page: any) {
+    await page.evaluate(async () => {
+      await new Promise<void>((resolve) => {
+        let total = 0;
+        const step = 400;
+        const timer = setInterval(() => {
+          const h = document.body.scrollHeight;
+          window.scrollBy(0, step);
+          total += step;
+          if (total >= h) {
+            clearInterval(timer);
+            // 回到顶部触发 intersection observer
+            window.scrollTo(0, 0);
+            setTimeout(resolve, 500);
+          }
+        }, 200);
+      });
+    });
+  }
+
+  /** URL 层面过滤明显的装饰图 */
+  private filterImageUrls(urls: string[]): string[] {
+    return urls.filter((url) => {
+      const lower = url.toLowerCase();
+      return (
+        !lower.includes('icon') &&
+        !lower.includes('avatar') &&
+        !lower.includes('placeholder') &&
+        !lower.includes('logo') &&
+        !lower.includes('/biz/') &&
+        !lower.includes('/common/') &&
+        !lower.includes('/template/') &&
+        !lower.includes('iconfont') &&
+        !lower.includes('font/')
+      );
+    });
   }
 
   /** 通用 HTML 解析：提取标题、描述、正文、图片 */
@@ -140,14 +269,19 @@ export class ImportService {
     const ogImage = $('meta[property="og:image"]').attr('content');
     if (ogImage && this.isValidImage(ogImage)) images.add(ogImage);
 
-    // 过滤掉图标/头像等小图
+    // URL 层面的过滤（关键词 + 路径）
     const filteredImages = Array.from(images).filter((url) => {
       const lower = url.toLowerCase();
       return (
         !lower.includes('icon') &&
         !lower.includes('avatar') &&
         !lower.includes('placeholder') &&
-        !lower.includes('logo')
+        !lower.includes('logo') &&
+        // 简篇/美篇的装饰模板图都在 /biz/ 路径下
+        !lower.includes('/biz/') &&
+        !lower.includes('/common/') &&
+        !lower.includes('/template/') &&
+        !lower.includes('iconfont')
       );
     });
 
@@ -155,8 +289,70 @@ export class ImportService {
       title: title.slice(0, 100),
       description: description.slice(0, 500),
       rawText: bodyText.slice(0, 3000),
-      images: filteredImages.slice(0, 20),
+      images: filteredImages.slice(0, 30),
     };
+  }
+
+  /**
+   * 下载图片到本地，按尺寸过滤掉小图
+   * 返回本地访问 URL（/uploads/xxx.ext）
+   */
+  private async downloadAndFilterImages(urls: string[]): Promise<string[]> {
+    const results: string[] = [];
+
+    // 并发下载，最多 10 个
+    const promises = urls.map(async (url) => {
+      try {
+        const res = await fetch(url, {
+          headers: {
+            'User-Agent':
+              'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+            Referer: new URL(url).origin,
+          },
+        });
+        if (!res.ok) return null;
+
+        const buffer = Buffer.from(await res.arrayBuffer());
+        if (buffer.length < 10 * 1024) return null; // 小于 10KB 的跳过
+
+        // 检查图片尺寸
+        try {
+          const dims = imageSize(buffer);
+          if (
+            !dims.width ||
+            !dims.height ||
+            dims.width < MIN_IMAGE_WIDTH ||
+            dims.height < MIN_IMAGE_HEIGHT
+          ) {
+            return null;
+          }
+        } catch {
+          return null;
+        }
+
+        // 保存到本地
+        const ext = this.getExtFromUrl(url) || 'jpg';
+        const filename = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}.${ext}`;
+        const filepath = join(UPLOAD_DIR, filename);
+        writeFileSync(filepath, buffer);
+        return `/uploads/${filename}`;
+      } catch (e: any) {
+        this.logger.warn(`下载失败 ${url}: ${e.message}`);
+        return null;
+      }
+    });
+
+    const settled = await Promise.all(promises);
+    for (const r of settled) {
+      if (r) results.push(r);
+    }
+
+    return results;
+  }
+
+  private getExtFromUrl(url: string): string {
+    const match = url.match(/\.(jpg|jpeg|png|webp|gif)(?:\?|$)/i);
+    return match ? match[1].toLowerCase() : 'jpg';
   }
 
   /** 使用 AI 从正文中提取别墅结构化数据 */

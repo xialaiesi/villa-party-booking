@@ -74,7 +74,14 @@
             </div>
             <div class="image-list" v-if="imageItems.length">
               <div class="image-item" v-for="(item, index) in imageItems" :key="index">
-                <el-image :src="resolveUrl(item.url)" fit="cover" style="width: 100px; height: 75px; border-radius: 4px;" />
+                <el-image
+                  :src="resolveUrl(item.url)"
+                  fit="cover"
+                  style="width: 100px; height: 75px; border-radius: 4px; cursor: pointer;"
+                  :preview-src-list="imageItems.map(i => resolveUrl(i.url))"
+                  :initial-index="index"
+                  preview-teleported
+                />
                 <el-input
                   v-model="item.caption"
                   size="small"
