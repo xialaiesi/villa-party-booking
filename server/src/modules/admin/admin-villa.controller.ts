@@ -10,10 +10,14 @@ import {
   ParseIntPipe,
 } from '@nestjs/common';
 import { AdminService } from './admin.service';
+import { VillaService } from '../villa/villa.service';
 
 @Controller('api/admin/villas')
 export class AdminVillaController {
-  constructor(private adminService: AdminService) {}
+  constructor(
+    private adminService: AdminService,
+    private villaService: VillaService,
+  ) {}
 
   @Get()
   async list(
@@ -52,11 +56,11 @@ export class AdminVillaController {
     @Query('year') year: string,
     @Query('month') month: string,
   ) {
-    // 复用 villa 模块的日历查询，这里直接返回 raw 数据
-    const startDate = new Date(parseInt(year), parseInt(month) - 1, 1);
-    const endDate = new Date(parseInt(year), parseInt(month), 0);
-    // 简化处理：直接查询返回
-    return { villaId: id, year: parseInt(year), month: parseInt(month) };
+    return this.villaService.getCalendar(
+      id,
+      parseInt(year) || new Date().getFullYear(),
+      parseInt(month) || new Date().getMonth() + 1,
+    );
   }
 
   @Put(':id/calendar')

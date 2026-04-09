@@ -5,9 +5,11 @@ import { AdminAuthController } from './admin-auth.controller';
 import { AdminVillaController } from './admin-villa.controller';
 import { AdminOrderController } from './admin-order.controller';
 import { AdminService } from './admin.service';
+import { VillaModule } from '../villa/villa.module';
 
 @Module({
   imports: [
+    VillaModule,
     JwtModule.registerAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
