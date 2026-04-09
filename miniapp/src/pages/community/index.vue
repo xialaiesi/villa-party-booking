@@ -13,7 +13,7 @@
         </view>
         <text class="post-content">{{ post.content }}</text>
         <view class="post-images" v-if="post.images?.length">
-          <image v-for="(img, i) in post.images.slice(0, 3)" :key="i" :src="img" class="post-img" mode="aspectFill" />
+          <image v-for="(img, i) in post.images.slice(0, 3)" :key="i" :src="resolveImg(img)" class="post-img" mode="aspectFill" />
         </view>
         <view class="post-meta">
           <text class="villa-tag" v-if="post.villa">{{ post.villa.name }}</text>
@@ -32,6 +32,9 @@
 import { ref } from 'vue';
 import { onShow } from '@dcloudio/uni-app';
 import { getFeed } from '../../api/community';
+import { resolveImageUrl } from '../../utils/request';
+
+const resolveImg = resolveImageUrl;
 
 const posts = ref<any[]>([]);
 

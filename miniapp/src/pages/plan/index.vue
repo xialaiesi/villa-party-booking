@@ -19,7 +19,7 @@
     <!-- 方案列表 -->
     <view class="plan-list">
       <view class="plan-card" v-for="plan in plans" :key="plan.id" @tap="goDetail(plan.id)">
-        <image v-if="plan.coverImage" :src="plan.coverImage" class="plan-cover" mode="aspectFill" />
+        <image v-if="plan.coverImage" :src="resolveImg(plan.coverImage)" class="plan-cover" mode="aspectFill" />
         <view class="plan-info">
           <text class="plan-name">{{ plan.name }}</text>
           <view class="plan-meta">
@@ -45,6 +45,9 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { getPlans } from '../../api/activity-plan';
+import { resolveImageUrl } from '../../utils/request';
+
+const resolveImg = resolveImageUrl;
 
 const scenes = [
   { key: '团建', name: '团建' },

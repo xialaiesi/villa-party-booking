@@ -89,7 +89,7 @@
       </view>
       <scroll-view scroll-x class="scroll-x">
         <view class="plan-card" v-for="p in plans" :key="p.id" @tap="goPlan(p.id)">
-          <image v-if="p.coverImage" :src="p.coverImage" class="plan-img" mode="aspectFill" />
+          <image v-if="p.coverImage" :src="resolveImg(p.coverImage)" class="plan-img" mode="aspectFill" />
           <view class="plan-body">
             <text class="plan-name">{{ p.name }}</text>
             <text class="plan-meta">{{ p.scene }} · {{ p.minGuests }}-{{ p.maxGuests }}人</text>

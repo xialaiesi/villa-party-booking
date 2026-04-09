@@ -7,7 +7,7 @@
 
     <view class="pack-list">
       <view class="pack-card" v-for="pack in packs" :key="pack.id">
-        <image v-if="pack.coverImage" :src="pack.coverImage" class="pack-cover" mode="aspectFill" />
+        <image v-if="pack.coverImage" :src="resolveImg(pack.coverImage)" class="pack-cover" mode="aspectFill" />
         <view class="pack-body">
           <view class="pack-header">
             <text class="pack-name">{{ pack.name }}</text>
@@ -36,6 +36,9 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { listThemePacks } from '../../api/theme-pack';
+import { resolveImageUrl } from '../../utils/request';
+
+const resolveImg = resolveImageUrl;
 
 const themes = ['赛博朋克', '复古', '露营', 'ins风', '派对'];
 const currentTheme = ref('');

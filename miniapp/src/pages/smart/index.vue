@@ -24,7 +24,7 @@
       <view class="card" v-if="result.villa" @tap="goVilla(result.villa.id)">
         <text class="card-label">推荐别墅</text>
         <view class="villa-row">
-          <image v-if="result.villa.coverImage" :src="result.villa.coverImage" class="villa-img" mode="aspectFill" />
+          <image v-if="result.villa.coverImage" :src="resolveImg(result.villa.coverImage)" class="villa-img" mode="aspectFill" />
           <view class="villa-info">
             <text class="villa-name">{{ result.villa.name }}</text>
             <text class="villa-price">¥{{ result.villa.basePrice }}/晚 · 可住{{ result.villa.maxGuests }}人</text>
@@ -59,6 +59,9 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { smartRecommend } from '../../api/smart-recommend';
+import { resolveImageUrl } from '../../utils/request';
+
+const resolveImg = resolveImageUrl;
 
 const query = ref('');
 const loading = ref(false);

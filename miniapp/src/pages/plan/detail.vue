@@ -1,6 +1,6 @@
 <template>
   <view class="page" v-if="plan">
-    <image v-if="plan.coverImage" :src="plan.coverImage" class="cover" mode="aspectFill" />
+    <image v-if="plan.coverImage" :src="resolveImg(plan.coverImage)" class="cover" mode="aspectFill" />
 
     <view class="card">
       <text class="plan-name">{{ plan.name }}</text>
@@ -55,6 +55,9 @@
 import { ref } from 'vue';
 import { onLoad } from '@dcloudio/uni-app';
 import { getPlan } from '../../api/activity-plan';
+import { resolveImageUrl } from '../../utils/request';
+
+const resolveImg = resolveImageUrl;
 
 const plan = ref<any>(null);
 

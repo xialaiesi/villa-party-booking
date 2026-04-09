@@ -14,7 +14,7 @@
           <text class="order-status">{{ statusText(order.status) }}</text>
         </view>
         <view class="order-body">
-          <image class="villa-cover" :src="order.villa?.coverImage" mode="aspectFill" />
+          <image class="villa-cover" :src="resolveImg(order.villa?.coverImage)" mode="aspectFill" />
           <view class="order-info">
             <text class="villa-name">{{ order.villa?.name }}</text>
             <text class="order-date">{{ order.checkIn }} ~ {{ order.checkOut }}</text>
@@ -34,6 +34,9 @@
 import { ref } from 'vue';
 import { onShow } from '@dcloudio/uni-app';
 import { listOrders } from '../../api/order';
+import { resolveImageUrl } from '../../utils/request';
+
+const resolveImg = resolveImageUrl;
 
 const orderList = ref<any[]>([]);
 const currentTab = ref(-1);

@@ -10,7 +10,7 @@
     <swiper v-if="banners.length" class="banner" indicator-dots autoplay circular interval="4000">
       <swiper-item v-for="b in banners" :key="b.id" @tap="goBanner(b)">
         <view class="banner-item">
-          <image :src="b.coverImage || '/static/logo.png'" class="banner-img" mode="aspectFill" />
+          <image :src="resolveImg(b.coverImage) || '/static/logo.png'" class="banner-img" mode="aspectFill" />
           <view class="banner-overlay">
             <text class="banner-title">{{ b.name }}</text>
             <text class="banner-desc" v-if="b.discount">立减 ¥{{ b.discount }}</text>
@@ -44,7 +44,7 @@
       </view>
       <scroll-view scroll-x class="scroll-x">
         <view class="group-card" v-for="g in groupBuys" :key="g.id" @tap="goGroup(g.id)">
-          <image :src="g.coverImage" class="group-img" mode="aspectFill" />
+          <image :src="resolveImg(g.coverImage)" class="group-img" mode="aspectFill" />
           <view class="group-body">
             <text class="group-name">{{ g.villaName }}</text>
             <text class="group-discount">立减 ¥{{ g.discount }}</text>
@@ -64,7 +64,7 @@
       </view>
       <scroll-view scroll-x class="scroll-x">
         <view class="pack-card" v-for="p in themePacks" :key="p.id" @tap="goPage('/pages/theme-pack/index')">
-          <image v-if="p.coverImage" :src="p.coverImage" class="pack-img" mode="aspectFill" />
+          <image v-if="p.coverImage" :src="resolveImg(p.coverImage)" class="pack-img" mode="aspectFill" />
           <view class="pack-body">
             <text class="pack-name">{{ p.name }}</text>
             <text class="pack-price">¥{{ p.price }}</text>
@@ -79,7 +79,7 @@
       <Skeleton v-if="loading" type="list" :count="3" />
       <template v-else>
         <view class="villa-card" v-for="villa in villas" :key="villa.id" @tap="goDetail(villa.id)">
-          <image class="villa-cover" :src="villa.coverImage" mode="aspectFill" lazy-load />
+          <image class="villa-cover" :src="resolveImg(villa.coverImage)" mode="aspectFill" lazy-load />
           <view class="villa-info">
             <view class="villa-header">
               <text class="villa-name">{{ villa.name }}</text>
@@ -106,7 +106,7 @@
       </view>
       <view class="post-grid">
         <view class="post-item" v-for="p in posts" :key="p.id" @tap="goPage('/pages/community/index')">
-          <image v-if="p.images?.[0]" :src="p.images[0]" class="post-img" mode="aspectFill" lazy-load />
+          <image v-if="p.images?.[0]" :src="resolveImg(p.images[0])" class="post-img" mode="aspectFill" lazy-load />
           <view v-else class="post-img post-placeholder"></view>
           <view class="post-footer">
             <text class="post-user">{{ p.user?.nickname || '用户' }}</text>
@@ -122,7 +122,10 @@
 import { ref } from 'vue';
 import { onShow } from '@dcloudio/uni-app';
 import { getHomeData } from '../../api/home';
+import { resolveImageUrl } from '../../utils/request';
 import Skeleton from '../../components/Skeleton.vue';
+
+const resolveImg = resolveImageUrl;
 
 const banners = ref<any[]>([]);
 const villas = ref<any[]>([]);

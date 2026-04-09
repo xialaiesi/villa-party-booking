@@ -2,7 +2,7 @@
   <view class="page" v-if="group">
     <!-- 别墅信息 -->
     <view class="villa-card">
-      <image :src="group.villa?.coverImage" class="villa-img" mode="aspectFill" />
+      <image :src="resolveImg(group.villa?.coverImage)" class="villa-img" mode="aspectFill" />
       <view class="villa-info">
         <text class="villa-name">{{ group.villa?.name }}</text>
         <text class="villa-date">{{ group.checkIn }} ~ {{ group.checkOut }}</text>
@@ -50,6 +50,9 @@
 import { ref, computed } from 'vue';
 import { onLoad } from '@dcloudio/uni-app';
 import { getGroup, joinGroup } from '../../api/group-buy';
+import { resolveImageUrl } from '../../utils/request';
+
+const resolveImg = resolveImageUrl;
 import { useUserStore } from '../../store/user';
 
 const userStore = useUserStore();

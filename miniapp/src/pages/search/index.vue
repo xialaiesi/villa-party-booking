@@ -20,7 +20,7 @@
     <!-- 别墅列表 -->
     <view class="villa-list" v-if="!loading && villaList.length">
       <view class="villa-card" v-for="villa in villaList" :key="villa.id" @tap="goDetail(villa.id)">
-        <image class="villa-cover" :src="villa.coverImage" mode="aspectFill" lazy-load />
+        <image class="villa-cover" :src="resolveImg(villa.coverImage)" mode="aspectFill" lazy-load />
         <view class="villa-info">
           <text class="villa-name">{{ villa.name }}</text>
           <view class="villa-meta">
@@ -113,6 +113,9 @@
 import { ref, onMounted } from 'vue';
 import { onLoad } from '@dcloudio/uni-app';
 import { listVillas, listFacilities } from '../../api/villa';
+import { resolveImageUrl } from '../../utils/request';
+
+const resolveImg = resolveImageUrl;
 import Skeleton from '../../components/Skeleton.vue';
 import Empty from '../../components/Empty.vue';
 
