@@ -87,8 +87,6 @@ export class AdminService {
   }
 
   async createVilla(ctx: AdminContext, data: any) {
-    const { facilities, images, ...villaData } = data;
-
     // 商家角色强制归属自己；平台超管未指定时回退到第一个商家
     let merchantId: number | null =
       ctx.role === 'platform'
@@ -105,16 +103,34 @@ export class AdminService {
 
     if (!merchantId) throw new BadRequestException('请先创建商家');
 
+    // 白名单过滤
+    const allowedFields = [
+      'name', 'description', 'address', 'latitude', 'longitude',
+      'maxGuests', 'bedrooms', 'area', 'basePrice', 'weekendPrice',
+      'deposit', 'discount3d', 'discount5d', 'discount7d',
+      'coverImage', 'tags', 'status', 'sortOrder',
+    ];
+    const villaData: any = { merchantId };
+    for (const key of allowedFields) {
+      if (data[key] !== undefined) villaData[key] = data[key];
+    }
+
+    // 处理设施（ID 数组或对象数组）
+    const facilityIds: number[] = Array.isArray(data.facilities)
+      ? data.facilities
+          .map((f: any) => (typeof f === 'number' ? f : f?.id || f?.facilityId))
+          .filter((v: any) => v)
+      : [];
+
     return this.prisma.villa.create({
       data: {
         ...villaData,
-        merchantId,
-        facilities: facilities?.length
-          ? { create: facilities.map((fId: number) => ({ facilityId: fId })) }
+        facilities: facilityIds.length
+          ? { create: facilityIds.map((fId) => ({ facilityId: fId })) }
           : undefined,
-        images: images?.length
+        images: data.images?.length
           ? {
-              create: images.map((img: any, i: number) => {
+              create: data.images.map((img: any, i: number) => {
                 if (typeof img === 'string') return { url: img, sortOrder: i };
                 return { url: img.url, caption: img.caption || null, sortOrder: i };
               }),
@@ -126,26 +142,44 @@ export class AdminService {
   }
 
   async updateVilla(ctx: AdminContext, id: number, data: any) {
-    // 权限检查
     await this.ensureVillaAccess(ctx, id);
 
-    const { facilities, images, merchantId, ...villaData } = data;
-
-    if (facilities) {
-      await this.prisma.villaFacility.deleteMany({ where: { villaId: id } });
-      await this.prisma.villaFacility.createMany({
-        data: facilities.map((fId: number) => ({ villaId: id, facilityId: fId })),
-      });
+    // 白名单过滤可更新字段
+    const allowedFields = [
+      'name', 'description', 'address', 'latitude', 'longitude',
+      'maxGuests', 'bedrooms', 'area', 'basePrice', 'weekendPrice',
+      'deposit', 'discount3d', 'discount5d', 'discount7d',
+      'coverImage', 'tags', 'status', 'sortOrder',
+    ];
+    const villaData: any = {};
+    for (const key of allowedFields) {
+      if (data[key] !== undefined) villaData[key] = data[key];
     }
 
-    if (images) {
+    // 更新设施关联（facilities 可能是 ID 数组或对象数组）
+    if (Array.isArray(data.facilities)) {
+      await this.prisma.villaFacility.deleteMany({ where: { villaId: id } });
+      const facilityIds = data.facilities
+        .map((f: any) => (typeof f === 'number' ? f : f?.id || f?.facilityId))
+        .filter((v: any) => v);
+      if (facilityIds.length) {
+        await this.prisma.villaFacility.createMany({
+          data: facilityIds.map((fId: number) => ({ villaId: id, facilityId: fId })),
+        });
+      }
+    }
+
+    // 更新图片
+    if (Array.isArray(data.images)) {
       await this.prisma.villaImage.deleteMany({ where: { villaId: id } });
-      await this.prisma.villaImage.createMany({
-        data: images.map((img: any, i: number) => {
-          if (typeof img === 'string') return { villaId: id, url: img, sortOrder: i };
-          return { villaId: id, url: img.url, caption: img.caption || null, sortOrder: i };
-        }),
-      });
+      if (data.images.length) {
+        await this.prisma.villaImage.createMany({
+          data: data.images.map((img: any, i: number) => {
+            if (typeof img === 'string') return { villaId: id, url: img, sortOrder: i };
+            return { villaId: id, url: img.url, caption: img.caption || null, sortOrder: i };
+          }),
+        });
+      }
     }
 
     return this.prisma.villa.update({
