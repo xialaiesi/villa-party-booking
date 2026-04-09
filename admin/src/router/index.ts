@@ -19,6 +19,8 @@ const routes = [
       { path: 'facility', component: () => import('../views/facility/index.vue'), meta: { title: '设施管理' } },
       { path: 'activity-plan', component: () => import('../views/activity-plan/index.vue'), meta: { title: '活动方案' } },
       { path: 'theme-pack', component: () => import('../views/theme-pack/index.vue'), meta: { title: '氛围包' } },
+      { path: 'local-service', component: () => import('../views/local-service/index.vue'), meta: { title: '周边服务' } },
+      { path: 'seasonal-event', component: () => import('../views/seasonal-event/index.vue'), meta: { title: '限定活动' } },
     ],
   },
 ];

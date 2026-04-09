@@ -59,6 +59,22 @@
     {
       "path": "pages/checklist/index",
       "style": { "navigationBarTitleText": "入住清单" }
+    },
+    {
+      "path": "pages/service/index",
+      "style": { "navigationBarTitleText": "周边服务" }
+    },
+    {
+      "path": "pages/community/index",
+      "style": { "navigationBarTitleText": "趴友圈" }
+    },
+    {
+      "path": "pages/seasonal/index",
+      "style": { "navigationBarTitleText": "限定体验", "navigationBarBackgroundColor": "#1a1a2e", "navigationBarTextStyle": "white" }
+    },
+    {
+      "path": "pages/planner/index",
+      "style": { "navigationBarTitleText": "AI 趴体策划师" }
     }
   ],
   "globalStyle": {

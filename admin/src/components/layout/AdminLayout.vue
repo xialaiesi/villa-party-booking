@@ -35,6 +35,14 @@
           <el-icon><Present /></el-icon>
           <span>氛围包</span>
         </el-menu-item>
+        <el-menu-item index="/local-service">
+          <el-icon><Service /></el-icon>
+          <span>周边服务</span>
+        </el-menu-item>
+        <el-menu-item index="/seasonal-event">
+          <el-icon><Star /></el-icon>
+          <span>限定活动</span>
+        </el-menu-item>
       </el-menu>
     </el-aside>
     <el-container>
@@ -51,7 +59,7 @@
 
 <script setup lang="ts">
 import { useRoute, useRouter } from 'vue-router';
-import { DataAnalysis, House, Calendar, ShoppingBag, Document, Setting, List, Present } from '@element-plus/icons-vue';
+import { DataAnalysis, House, Calendar, ShoppingBag, Document, Setting, List, Present, Service, Star } from '@element-plus/icons-vue';
 
 const route = useRoute();
 const router = useRouter();

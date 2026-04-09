@@ -35,8 +35,10 @@ model Villa {
   facilities VillaFacility[]
   calendars  VillaCalendar[]
   orders     Order[]
-  reviews    Review[]
-  groupBuys  GroupBuy[]
+  reviews        Review[]
+  groupBuys      GroupBuy[]
+  posts          Post[]
+  seasonalEvents SeasonalEvent[] @relation("SeasonalVilla")
 
   @@map("villa")
 }
@@ -125,6 +127,11 @@ model User {
   uploadedPhotos AlbumPhoto[]  @relation("PhotoUploader")
   initiatedGroups GroupBuy[]   @relation("GroupInitiator")
   groupMemberships GroupMember[]
+  serviceOrders  ServiceOrder[]
+  posts          Post[]
+  postComments   PostComment[]
+  postLikes      PostLike[]
+  chatSessions   ChatSession[]
 
   @@map("user")
 }
@@ -161,9 +168,11 @@ model Order {
   orderPackages OrderPackage[]
   payments      Payment[]
   reviews       Review[]
-  shares        OrderShare[]
-  albums        Album[]
-  tasks         OrderTask[]
+  shares         OrderShare[]
+  albums         Album[]
+  tasks          OrderTask[]
+  serviceOrders  ServiceOrder[]
+  corporateOrder CorporateOrder?
 
   @@map("order")
 }
@@ -404,6 +413,169 @@ model OrderTask {
   order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
   @@map("order_task")
+}
+
+// ==================== 周边服务市集 ====================
+
+model LocalService {
+  id          BigInt   @id @default(autoincrement())
+  name        String   @db.VarChar(100)
+  category    String   @db.VarChar(50) // 厨师/摄影/DJ/调酒/蛋糕/教练
+  description String?  @db.Text
+  price       Decimal  @db.Decimal(10, 2)
+  unit        String   @default("次") @db.VarChar(20) // 次/小时/天
+  coverImage  String?  @map("cover_image") @db.VarChar(500)
+  provider    String?  @db.VarChar(100) // 服务商名称
+  phone       String?  @db.VarChar(20)
+  serviceArea String?  @map("service_area") @db.VarChar(255) // 服务区域
+  status      Int      @default(1) @db.TinyInt
+  sortOrder   Int      @default(0) @map("sort_order")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  serviceOrders ServiceOrder[]
+
+  @@map("local_service")
+}
+
+model ServiceOrder {
+  id          BigInt    @id @default(autoincrement())
+  orderId     BigInt    @map("order_id")
+  serviceId   BigInt    @map("service_id")
+  userId      BigInt    @map("user_id")
+  serviceName String    @map("service_name") @db.VarChar(100)
+  price       Decimal   @db.Decimal(10, 2)
+  serviceDate DateTime  @map("service_date") @db.Date
+  status      Int       @default(0) @db.TinyInt // 0-待确认 1-已确认 2-已完成 3-已取消
+  remark      String?   @db.Text
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  order   Order        @relation(fields: [orderId], references: [id])
+  service LocalService @relation(fields: [serviceId], references: [id])
+  user    User         @relation(fields: [userId], references: [id])
+
+  @@map("service_order")
+}
+
+// ==================== 趴友圈 ====================
+
+model Post {
+  id        BigInt   @id @default(autoincrement())
+  userId    BigInt   @map("user_id")
+  villaId   BigInt?  @map("villa_id")
+  albumId   BigInt?  @map("album_id") // 关联趴后回忆
+  content   String   @db.Text
+  images    String?  @db.Text // JSON array
+  tags      String?  @db.VarChar(255)
+  likeCount Int      @default(0) @map("like_count")
+  status    Int      @default(1) @db.TinyInt // 0-隐藏 1-公开
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user     User          @relation(fields: [userId], references: [id])
+  villa    Villa?        @relation(fields: [villaId], references: [id])
+  comments PostComment[]
+  likes    PostLike[]
+
+  @@map("post")
+}
+
+model PostComment {
+  id        BigInt   @id @default(autoincrement())
+  postId    BigInt   @map("post_id")
+  userId    BigInt   @map("user_id")
+  content   String   @db.VarChar(500)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("post_comment")
+}
+
+model PostLike {
+  postId BigInt @map("post_id")
+  userId BigInt @map("user_id")
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id])
+
+  @@id([postId, userId])
+  @@map("post_like")
+}
+
+// ==================== 老板买单（企业团建） ====================
+
+model CorporateOrder {
+  id            BigInt   @id @default(autoincrement())
+  orderId       BigInt   @unique @map("order_id")
+  companyName   String   @map("company_name") @db.VarChar(200)
+  contactName   String   @map("contact_name") @db.VarChar(50)
+  contactPhone  String   @map("contact_phone") @db.VarChar(20)
+  invoiceTitle  String?  @map("invoice_title") @db.VarChar(200)
+  invoiceTaxNo  String?  @map("invoice_tax_no") @db.VarChar(50)
+  payMethod     Int      @default(0) @db.TinyInt // 0-微信支付 1-对公转账
+  transferProof String?  @map("transfer_proof") @db.VarChar(500) // 转账凭证图
+  invoiceUrl    String?  @map("invoice_url") @db.VarChar(500) // 电子发票
+  planPdfUrl    String?  @map("plan_pdf_url") @db.VarChar(500) // 团建方案PDF
+  reportPdfUrl  String?  @map("report_pdf_url") @db.VarChar(500) // 团建报告PDF
+  status        Int      @default(0) @db.TinyInt // 0-待处理 1-已确认 2-已开票
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  order Order @relation(fields: [orderId], references: [id])
+
+  @@map("corporate_order")
+}
+
+// ==================== 季节限定体验 ====================
+
+model SeasonalEvent {
+  id          BigInt   @id @default(autoincrement())
+  name        String   @db.VarChar(100)
+  description String?  @db.Text
+  coverImage  String?  @map("cover_image") @db.VarChar(500)
+  season      String   @db.VarChar(20) // spring/summer/autumn/winter
+  startDate   DateTime @map("start_date") @db.Date
+  endDate     DateTime @map("end_date") @db.Date
+  villaId     BigInt?  @map("villa_id") // 指定别墅，null=全部适用
+  themePackId BigInt?  @map("theme_pack_id") // 关联氛围包
+  planId      BigInt?  @map("plan_id") // 关联活动方案
+  discount    Decimal? @db.Decimal(10, 2) // 优惠金额
+  quota       Int?     // 限量名额，null=不限
+  soldCount   Int      @default(0) @map("sold_count")
+  status      Int      @default(1) @db.TinyInt
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  villa Villa? @relation("SeasonalVilla", fields: [villaId], references: [id])
+
+  @@map("seasonal_event")
+}
+
+// ==================== AI 趴体策划师 ====================
+
+model ChatSession {
+  id        BigInt   @id @default(autoincrement())
+  userId    BigInt   @map("user_id")
+  title     String?  @db.VarChar(100)
+  status    Int      @default(1) @db.TinyInt // 0-已关闭 1-进行中
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user     User          @relation(fields: [userId], references: [id])
+  messages ChatMessage[]
+
+  @@map("chat_session")
+}
+
+model ChatMessage {
+  id        BigInt   @id @default(autoincrement())
+  sessionId BigInt   @map("session_id")
+  role      String   @db.VarChar(20) // user/assistant
+  content   String   @db.Text
+  metadata  String?  @db.Text // JSON: AI 推荐结果等结构化数据
+  createdAt DateTime @default(now()) @map("created_at")
+
+  session ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@map("chat_message")
 }
 
 // ==================== 管理员 ====================

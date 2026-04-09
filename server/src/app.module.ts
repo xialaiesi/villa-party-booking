@@ -18,6 +18,11 @@ import { SmartRecommendModule } from './modules/smart-recommend/smart-recommend.
 import { ThemePackModule } from './modules/theme-pack/theme-pack.module';
 import { GroupBuyModule } from './modules/group-buy/group-buy.module';
 import { OrderTaskModule } from './modules/order-task/order-task.module';
+import { LocalServiceModule } from './modules/local-service/local-service.module';
+import { CommunityModule } from './modules/community/community.module';
+import { CorporateModule } from './modules/corporate/corporate.module';
+import { SeasonalEventModule } from './modules/seasonal-event/seasonal-event.module';
+import { AiPlannerModule } from './modules/ai-planner/ai-planner.module';
 
 @Module({
   imports: [
@@ -36,6 +41,11 @@ import { OrderTaskModule } from './modules/order-task/order-task.module';
     ThemePackModule,
     GroupBuyModule,
     OrderTaskModule,
+    LocalServiceModule,
+    CommunityModule,
+    CorporateModule,
+    SeasonalEventModule,
+    AiPlannerModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: AllExceptionsFilter },
