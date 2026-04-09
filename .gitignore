@@ -1,2 +1,41 @@
+# IDE
 .idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
 .DS_Store
+Thumbs.db
+
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+server/dist/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+npm-debug.log*
+
+# Prisma
+server/generated/
+
+# uni-app
+miniapp/dist/
+miniapp/unpackage/
+
+# Admin
+admin/dist/
+
+# Web
+web/dist/
+
+# Uploaded files
+server/uploads/

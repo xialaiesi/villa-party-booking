@@ -1,0 +1,125 @@
+{
+  "pages": [
+    {
+      "path": "pages/index/index",
+      "style": { "navigationBarTitleText": "别墅轰趴" }
+    },
+    {
+      "path": "pages/search/index",
+      "style": { "navigationBarTitleText": "搜索别墅" }
+    },
+    {
+      "path": "pages/villa/index",
+      "style": { "navigationBarTitleText": "别墅详情" }
+    },
+    {
+      "path": "pages/booking/index",
+      "style": { "navigationBarTitleText": "确认预订" }
+    },
+    {
+      "path": "pages/order/index",
+      "style": { "navigationBarTitleText": "我的订单" }
+    },
+    {
+      "path": "pages/order/detail",
+      "style": { "navigationBarTitleText": "订单详情" }
+    },
+    {
+      "path": "pages/mine/index",
+      "style": { "navigationBarTitleText": "我的" }
+    },
+    {
+      "path": "pages/plan/index",
+      "style": { "navigationBarTitleText": "活动方案" }
+    },
+    {
+      "path": "pages/plan/detail",
+      "style": { "navigationBarTitleText": "方案详情" }
+    },
+    {
+      "path": "pages/share/index",
+      "style": { "navigationBarTitleText": "费用分摊" }
+    },
+    {
+      "path": "pages/album/index",
+      "style": { "navigationBarTitleText": "聚会回忆" }
+    },
+    {
+      "path": "pages/smart/index",
+      "style": { "navigationBarTitleText": "智能选墅" }
+    },
+    {
+      "path": "pages/theme-pack/index",
+      "style": { "navigationBarTitleText": "氛围包" }
+    },
+    {
+      "path": "pages/group/index",
+      "style": { "navigationBarTitleText": "拼团" }
+    },
+    {
+      "path": "pages/checklist/index",
+      "style": { "navigationBarTitleText": "入住清单" }
+    },
+    {
+      "path": "pages/service/index",
+      "style": { "navigationBarTitleText": "周边服务" }
+    },
+    {
+      "path": "pages/community/index",
+      "style": { "navigationBarTitleText": "趴友圈" }
+    },
+    {
+      "path": "pages/seasonal/index",
+      "style": { "navigationBarTitleText": "限定体验", "navigationBarBackgroundColor": "#1a1a2e", "navigationBarTextStyle": "white" }
+    },
+    {
+      "path": "pages/planner/index",
+      "style": { "navigationBarTitleText": "AI 趴体策划师" }
+    },
+    {
+      "path": "pages/community/post",
+      "style": { "navigationBarTitleText": "发布帖子" }
+    },
+    {
+      "path": "pages/message/index",
+      "style": { "navigationBarTitleText": "消息中心" }
+    }
+  ],
+  "globalStyle": {
+    "navigationBarTextStyle": "black",
+    "navigationBarTitleText": "别墅轰趴",
+    "navigationBarBackgroundColor": "#FFFFFF",
+    "backgroundColor": "#F5F5F5"
+  },
+  "tabBar": {
+    "color": "#999999",
+    "selectedColor": "#FF6B35",
+    "borderStyle": "black",
+    "list": [
+      {
+        "pagePath": "pages/index/index",
+        "text": "首页",
+        "iconPath": "static/tab/home.png",
+        "selectedIconPath": "static/tab/home-active.png"
+      },
+      {
+        "pagePath": "pages/community/index",
+        "text": "趴友圈",
+        "iconPath": "static/tab/home.png",
+        "selectedIconPath": "static/tab/home-active.png"
+      },
+      {
+        "pagePath": "pages/order/index",
+        "text": "订单",
+        "iconPath": "static/tab/order.png",
+        "selectedIconPath": "static/tab/order-active.png"
+      },
+      {
+        "pagePath": "pages/mine/index",
+        "text": "我的",
+        "iconPath": "static/tab/mine.png",
+        "selectedIconPath": "static/tab/mine-active.png"
+      }
+    ]
+  }
+}
