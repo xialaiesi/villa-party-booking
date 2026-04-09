@@ -44,6 +44,16 @@
     <!-- 编辑弹窗 -->
     <el-dialog v-model="dialogVisible" title="别墅信息" width="700px">
       <el-form :model="form" label-width="100px">
+        <el-form-item label="归属商家" v-if="userStore.isPlatform">
+          <el-select v-model="form.merchantId" placeholder="请选择商家" style="width: 100%;">
+            <el-option
+              v-for="m in merchantOptions"
+              :key="m.id"
+              :label="m.name"
+              :value="m.id"
+            />
+          </el-select>
+        </el-form-item>
         <el-form-item label="名称"><el-input v-model="form.name" /></el-form-item>
         <el-form-item label="地址"><el-input v-model="form.address" /></el-form-item>
         <el-form-item label="容纳人数"><el-input-number v-model="form.maxGuests" :min="1" /></el-form-item>
@@ -205,6 +215,10 @@ import { getVillas, createVilla, updateVilla, updateVillaStatus } from '../../ap
 import { analyzeImages, generateDescription } from '../../api/ai';
 import { importFromUrl } from '../../api/import';
 import { uploadSingle, resolveImageUrl } from '../../api/upload';
+import { getMerchants } from '../../api/merchant';
+import { useUserStore } from '../../store/user';
+
+const userStore = useUserStore();
 
 interface ImageItem { url: string; caption: string; }
 
@@ -214,10 +228,12 @@ const pageSize = 10;
 const total = ref(0);
 const dialogVisible = ref(false);
 const editingId = ref<number | null>(null);
+const merchantOptions = ref<any[]>([]);
 
 const form = reactive({
   name: '', address: '', maxGuests: 10, bedrooms: 3, area: 200,
   basePrice: 0, weekendPrice: 0, deposit: 0, description: '', tags: '',
+  merchantId: null as number | null,
 });
 
 const imageItems = ref<ImageItem[]>([]);
@@ -289,6 +305,7 @@ function handleUseImport() {
     deposit: s.deposit || 500,
     description: s.summary || r.description || '',
     tags: s.tags || '团建,生日,聚会',
+    merchantId: form.merchantId || merchantOptions.value[0]?.id || null,
   });
 
   // 填入图片
@@ -305,7 +322,10 @@ function handleUseImport() {
   ElMessage.info('已填入数据，请确认后保存');
 }
 
-onMounted(() => loadData());
+onMounted(() => {
+  loadData();
+  loadMerchants();
+});
 
 async function loadData() {
   const res: any = await getVillas({ page: page.value, pageSize });
@@ -313,11 +333,26 @@ async function loadData() {
   total.value = res.total;
 }
 
+async function loadMerchants() {
+  if (!userStore.isPlatform) return;
+  try {
+    const res: any = await getMerchants({ page: 1, pageSize: 100 });
+    merchantOptions.value = res.list;
+    // 默认选第一个商家
+    if (merchantOptions.value.length && !form.merchantId) {
+      form.merchantId = merchantOptions.value[0].id;
+    }
+  } catch (e) {
+    console.error(e);
+  }
+}
+
 function openDialog() {
   editingId.value = null;
   Object.assign(form, {
     name: '', address: '', maxGuests: 10, bedrooms: 3, area: 200,
     basePrice: 0, weekendPrice: 0, deposit: 0, description: '', tags: '',
+    merchantId: merchantOptions.value[0]?.id || null,
   });
   imageItems.value = [];
   imageAnalysis.value = [];
