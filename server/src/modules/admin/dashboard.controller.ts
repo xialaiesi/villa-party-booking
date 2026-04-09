@@ -1,59 +1,54 @@
 import { Controller, Get } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { AdminCtx } from '../../common/decorators/admin-context.decorator';
+import type { AdminContext } from './admin.service';
 
 @Controller('api/admin/dashboard')
 export class DashboardController {
   constructor(private prisma: PrismaService) {}
 
-  /** 核心统计概览 */
+  /** 根据角色返回 where 过滤条件 */
+  private scope(ctx: AdminContext): any {
+    if (ctx.role === 'platform') return {};
+    return { merchantId: ctx.merchantId };
+  }
+
   @Get('stats')
-  async stats() {
+  async stats(@AdminCtx() ctx: AdminContext) {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
-
     const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
 
+    const orderWhere = this.scope(ctx);
+    const villaWhere = this.scope(ctx);
+
     const [
-      todayOrders,
-      todayRevenue,
-      pendingOrders,
-      totalVillas,
-      activeVillas,
-      totalUsers,
-      monthOrders,
-      monthRevenue,
-      totalOrders,
-      completedOrders,
+      todayOrders, todayRevenue, pendingOrders, totalVillas, activeVillas,
+      totalUsers, monthOrders, monthRevenue, totalOrders, completedOrders,
     ] = await Promise.all([
-      this.prisma.order.count({ where: { createdAt: { gte: today, lt: tomorrow } } }),
+      this.prisma.order.count({ where: { ...orderWhere, createdAt: { gte: today, lt: tomorrow } } }),
       this.prisma.order.aggregate({
         _sum: { totalAmount: true },
-        where: { paidAt: { gte: today, lt: tomorrow }, status: { gte: 1 } },
+        where: { ...orderWhere, paidAt: { gte: today, lt: tomorrow }, status: { gte: 1 } },
       }),
-      this.prisma.order.count({ where: { status: 1 } }),
-      this.prisma.villa.count(),
-      this.prisma.villa.count({ where: { status: 1 } }),
-      this.prisma.user.count(),
-      this.prisma.order.count({ where: { createdAt: { gte: monthStart } } }),
+      this.prisma.order.count({ where: { ...orderWhere, status: 1 } }),
+      this.prisma.villa.count({ where: villaWhere }),
+      this.prisma.villa.count({ where: { ...villaWhere, status: 1 } }),
+      ctx.role === 'platform' ? this.prisma.user.count() : 0,
+      this.prisma.order.count({ where: { ...orderWhere, createdAt: { gte: monthStart } } }),
       this.prisma.order.aggregate({
         _sum: { totalAmount: true },
-        where: { paidAt: { gte: monthStart }, status: { gte: 1 } },
+        where: { ...orderWhere, paidAt: { gte: monthStart }, status: { gte: 1 } },
       }),
-      this.prisma.order.count(),
-      this.prisma.order.count({ where: { status: 5 } }),
+      this.prisma.order.count({ where: orderWhere }),
+      this.prisma.order.count({ where: { ...orderWhere, status: 5 } }),
     ]);
 
     return {
-      today: {
-        orders: todayOrders,
-        revenue: Number(todayRevenue._sum.totalAmount || 0),
-      },
-      month: {
-        orders: monthOrders,
-        revenue: Number(monthRevenue._sum.totalAmount || 0),
-      },
+      today: { orders: todayOrders, revenue: Number(todayRevenue._sum.totalAmount || 0) },
+      month: { orders: monthOrders, revenue: Number(monthRevenue._sum.totalAmount || 0) },
       pendingOrders,
       villas: { total: totalVillas, active: activeVillas },
       users: totalUsers,
@@ -63,14 +58,13 @@ export class DashboardController {
     };
   }
 
-  /** 订单和收入趋势（近30天） */
   @Get('trend')
-  async trend() {
+  async trend(@AdminCtx() ctx: AdminContext) {
     const days = 30;
     const result: { date: string; orders: number; revenue: number }[] = [];
-
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+    const scope = this.scope(ctx);
 
     for (let i = days - 1; i >= 0; i--) {
       const d = new Date(today);
@@ -79,10 +73,10 @@ export class DashboardController {
       next.setDate(next.getDate() + 1);
 
       const [orders, revenue] = await Promise.all([
-        this.prisma.order.count({ where: { createdAt: { gte: d, lt: next } } }),
+        this.prisma.order.count({ where: { ...scope, createdAt: { gte: d, lt: next } } }),
         this.prisma.order.aggregate({
           _sum: { totalAmount: true },
-          where: { paidAt: { gte: d, lt: next }, status: { gte: 1 } },
+          where: { ...scope, paidAt: { gte: d, lt: next }, status: { gte: 1 } },
         }),
       ]);
 
@@ -92,16 +86,15 @@ export class DashboardController {
         revenue: Number(revenue._sum.totalAmount || 0),
       });
     }
-
     return result;
   }
 
-  /** 订单状态分布 */
   @Get('order-status')
-  async orderStatus() {
+  async orderStatus(@AdminCtx() ctx: AdminContext) {
     const statuses = await this.prisma.order.groupBy({
       by: ['status'],
       _count: true,
+      where: this.scope(ctx),
     });
 
     const labels: Record<number, string> = {
@@ -109,19 +102,15 @@ export class DashboardController {
       4: '待退押金', 5: '已完成', 6: '已取消', 7: '已拒绝', 8: '已关闭',
     };
 
-    return statuses.map((s) => ({
-      status: s.status,
-      label: labels[s.status] || '未知',
-      count: s._count,
-    }));
+    return statuses.map((s) => ({ status: s.status, label: labels[s.status] || '未知', count: s._count }));
   }
 
-  /** 热门别墅 Top 5 */
   @Get('hot-villas')
-  async hotVillas() {
+  async hotVillas(@AdminCtx() ctx: AdminContext) {
     const villas = await this.prisma.order.groupBy({
       by: ['villaId'],
       _count: true,
+      where: this.scope(ctx),
       orderBy: { _count: { villaId: 'desc' } },
       take: 5,
     });
@@ -145,10 +134,10 @@ export class DashboardController {
     return result;
   }
 
-  /** 最近订单 */
   @Get('recent-orders')
-  async recentOrders() {
+  async recentOrders(@AdminCtx() ctx: AdminContext) {
     const orders = await this.prisma.order.findMany({
+      where: this.scope(ctx),
       orderBy: { createdAt: 'desc' },
       take: 10,
       include: {

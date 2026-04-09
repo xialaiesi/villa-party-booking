@@ -1,5 +1,6 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import type { AdminContext } from '../../common/types/admin-context';
 
 @Injectable()
 export class ActivityPlanService {
@@ -40,9 +41,11 @@ export class ActivityPlanService {
   }
 
   /** 管理后台：列表 */
-  async findAll(page = 1, pageSize = 10) {
+  async findAll(ctx: AdminContext, page = 1, pageSize = 10) {
+    const where: any = ctx.role === 'platform' ? {} : { merchantId: ctx.merchantId };
     const [list, total] = await Promise.all([
       this.prisma.activityPlan.findMany({
+        where,
         orderBy: { createdAt: 'desc' },
         skip: (page - 1) * pageSize,
         take: pageSize,
@@ -51,13 +54,21 @@ export class ActivityPlanService {
           packages: { include: { package: true } },
         },
       }),
-      this.prisma.activityPlan.count(),
+      this.prisma.activityPlan.count({ where }),
     ]);
     return { list: list.map((p) => this.format(p)), total, page, pageSize };
   }
 
+  private async ensureAccess(ctx: AdminContext, id: number) {
+    if (ctx.role === 'platform') return;
+    const p = await this.prisma.activityPlan.findUnique({ where: { id } });
+    if (!p || Number(p.merchantId) !== ctx.merchantId) {
+      throw new NotFoundException('方案不存在或无权限');
+    }
+  }
+
   /** 管理后台：创建方案 */
-  async create(data: {
+  async create(ctx: AdminContext, data: {
     name: string;
     description?: string;
     scene: string;
@@ -69,10 +80,14 @@ export class ActivityPlanService {
     packageIds?: { packageId: number; required?: boolean }[];
   }) {
     const { steps, packageIds, ...planData } = data;
+    const merchantId = ctx.role === 'platform' ? (planData as any).merchantId || ctx.merchantId : ctx.merchantId;
+    if (!merchantId) throw new ForbiddenException('缺少 merchantId');
+    delete (planData as any).merchantId;
 
     return this.prisma.activityPlan.create({
       data: {
         ...planData,
+        merchantId,
         steps: steps?.length
           ? {
               create: steps.map((s, i) => ({
@@ -102,6 +117,7 @@ export class ActivityPlanService {
 
   /** 管理后台：更新方案 */
   async update(
+    ctx: AdminContext,
     id: number,
     data: {
       name?: string;
@@ -116,7 +132,9 @@ export class ActivityPlanService {
       packageIds?: { packageId: number; required?: boolean }[];
     },
   ) {
+    await this.ensureAccess(ctx, id);
     const { steps, packageIds, ...planData } = data;
+    delete (planData as any).merchantId;
 
     // 更新步骤：先删后建
     if (steps) {
@@ -155,7 +173,8 @@ export class ActivityPlanService {
     });
   }
 
-  async delete(id: number) {
+  async delete(ctx: AdminContext, id: number) {
+    await this.ensureAccess(ctx, id);
     await this.prisma.activityPlan.delete({ where: { id } });
     return { success: true };
   }

@@ -3,14 +3,15 @@ import {
   Get,
   Post,
   Put,
-  Delete,
   Param,
   Body,
   Query,
   ParseIntPipe,
 } from '@nestjs/common';
 import { AdminService } from './admin.service';
+import type { AdminContext } from './admin.service';
 import { VillaService } from '../villa/villa.service';
+import { AdminCtx } from '../../common/decorators/admin-context.decorator';
 
 @Controller('api/admin/villas')
 export class AdminVillaController {
@@ -21,11 +22,13 @@ export class AdminVillaController {
 
   @Get()
   async list(
+    @AdminCtx() ctx: AdminContext,
     @Query('page') page?: string,
     @Query('pageSize') pageSize?: string,
     @Query('status') status?: string,
   ) {
     return this.adminService.getVillas(
+      ctx,
       page ? parseInt(page) : 1,
       pageSize ? parseInt(pageSize) : 10,
       status !== undefined ? parseInt(status) : undefined,
@@ -33,21 +36,26 @@ export class AdminVillaController {
   }
 
   @Post()
-  async create(@Body() data: any) {
-    return this.adminService.createVilla(data);
+  async create(@AdminCtx() ctx: AdminContext, @Body() data: any) {
+    return this.adminService.createVilla(ctx, data);
   }
 
   @Put(':id')
-  async update(@Param('id', ParseIntPipe) id: number, @Body() data: any) {
-    return this.adminService.updateVilla(id, data);
+  async update(
+    @AdminCtx() ctx: AdminContext,
+    @Param('id', ParseIntPipe) id: number,
+    @Body() data: any,
+  ) {
+    return this.adminService.updateVilla(ctx, id, data);
   }
 
   @Put(':id/status')
   async updateStatus(
+    @AdminCtx() ctx: AdminContext,
     @Param('id', ParseIntPipe) id: number,
     @Body('status') status: number,
   ) {
-    return this.adminService.updateVillaStatus(id, status);
+    return this.adminService.updateVillaStatus(ctx, id, status);
   }
 
   @Get(':id/calendar')
@@ -65,9 +73,10 @@ export class AdminVillaController {
 
   @Put(':id/calendar')
   async setCalendar(
+    @AdminCtx() ctx: AdminContext,
     @Param('id', ParseIntPipe) id: number,
     @Body('dates') dates: { date: string; price: number; status: number }[],
   ) {
-    return this.adminService.setCalendar(id, dates);
+    return this.adminService.setCalendar(ctx, id, dates);
   }
 }

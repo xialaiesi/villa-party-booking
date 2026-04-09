@@ -6,25 +6,32 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../../prisma/prisma.service';
+import { MerchantService } from '../merchant/merchant.service';
+import type { AdminContext } from '../../common/types/admin-context';
 import * as crypto from 'crypto';
+
+export type { AdminContext };
 
 @Injectable()
 export class AdminService {
   constructor(
     private prisma: PrismaService,
     private jwtService: JwtService,
+    private merchantService: MerchantService,
   ) {}
 
   // ==================== 认证 ====================
 
   async login(username: string, password: string) {
-    const admin = await this.prisma.admin.findUnique({ where: { username } });
+    const admin = await this.prisma.admin.findUnique({
+      where: { username },
+      include: { merchant: { select: { name: true, logo: true } } },
+    });
     if (!admin || admin.status !== 1) {
       throw new UnauthorizedException('用户名或密码错误');
     }
 
-    const hashedPassword = this.hashPassword(password);
-    if (admin.password !== hashedPassword) {
+    if (admin.password !== this.hashPassword(password)) {
       throw new UnauthorizedException('用户名或密码错误');
     }
 
@@ -32,15 +39,33 @@ export class AdminService {
       sub: Number(admin.id),
       username: admin.username,
       type: 'admin',
+      role: admin.role,
+      merchantId: admin.merchantId ? Number(admin.merchantId) : null,
     });
 
-    return { token, admin: { id: Number(admin.id), username: admin.username, nickname: admin.nickname } };
+    return {
+      token,
+      admin: {
+        id: Number(admin.id),
+        username: admin.username,
+        nickname: admin.nickname,
+        role: admin.role,
+        merchantId: admin.merchantId ? Number(admin.merchantId) : null,
+        merchantName: (admin as any).merchant?.name || null,
+      },
+    };
+  }
+
+  /** 根据登录上下文返回 where 条件 */
+  private scopeWhere(ctx: AdminContext): any {
+    if (ctx.role === 'platform') return {};
+    return { merchantId: ctx.merchantId };
   }
 
   // ==================== 别墅管理 ====================
 
-  async getVillas(page = 1, pageSize = 10, status?: number) {
-    const where: any = {};
+  async getVillas(ctx: AdminContext, page = 1, pageSize = 10, status?: number) {
+    const where: any = this.scopeWhere(ctx);
     if (status !== undefined) where.status = status;
 
     const [list, total] = await Promise.all([
@@ -52,6 +77,7 @@ export class AdminService {
         include: {
           images: { orderBy: { sortOrder: 'asc' } },
           facilities: { include: { facility: true } },
+          merchant: { select: { name: true } },
         },
       }),
       this.prisma.villa.count({ where }),
@@ -60,104 +86,92 @@ export class AdminService {
     return { list, total, page, pageSize };
   }
 
-  async createVilla(data: any) {
+  async createVilla(ctx: AdminContext, data: any) {
     const { facilities, images, ...villaData } = data;
 
-    const villa = await this.prisma.villa.create({
+    // 商家角色强制归属自己
+    const merchantId =
+      ctx.role === 'platform'
+        ? data.merchantId || ctx.merchantId
+        : ctx.merchantId;
+    if (!merchantId) throw new BadRequestException('缺少 merchantId');
+
+    return this.prisma.villa.create({
       data: {
         ...villaData,
+        merchantId,
         facilities: facilities?.length
           ? { create: facilities.map((fId: number) => ({ facilityId: fId })) }
           : undefined,
         images: images?.length
-          ? {
-              create: images.map((url: string, i: number) => ({
-                url,
-                sortOrder: i,
-              })),
-            }
+          ? { create: images.map((url: string, i: number) => ({ url, sortOrder: i })) }
           : undefined,
       },
-      include: {
-        images: true,
-        facilities: { include: { facility: true } },
-      },
+      include: { images: true, facilities: { include: { facility: true } } },
     });
-
-    return villa;
   }
 
-  async updateVilla(id: number, data: any) {
-    const { facilities, images, ...villaData } = data;
+  async updateVilla(ctx: AdminContext, id: number, data: any) {
+    // 权限检查
+    await this.ensureVillaAccess(ctx, id);
 
-    // 更新设施关联
+    const { facilities, images, merchantId, ...villaData } = data;
+
     if (facilities) {
       await this.prisma.villaFacility.deleteMany({ where: { villaId: id } });
       await this.prisma.villaFacility.createMany({
-        data: facilities.map((fId: number) => ({
-          villaId: id,
-          facilityId: fId,
-        })),
+        data: facilities.map((fId: number) => ({ villaId: id, facilityId: fId })),
       });
     }
 
-    // 更新图片
     if (images) {
       await this.prisma.villaImage.deleteMany({ where: { villaId: id } });
       await this.prisma.villaImage.createMany({
-        data: images.map((url: string, i: number) => ({
-          villaId: id,
-          url,
-          sortOrder: i,
-        })),
+        data: images.map((url: string, i: number) => ({ villaId: id, url, sortOrder: i })),
       });
     }
 
     return this.prisma.villa.update({
       where: { id },
       data: villaData,
-      include: {
-        images: true,
-        facilities: { include: { facility: true } },
-      },
+      include: { images: true, facilities: { include: { facility: true } } },
     });
   }
 
-  async updateVillaStatus(id: number, status: number) {
-    return this.prisma.villa.update({
-      where: { id },
-      data: { status },
-    });
+  async updateVillaStatus(ctx: AdminContext, id: number, status: number) {
+    await this.ensureVillaAccess(ctx, id);
+    return this.prisma.villa.update({ where: { id }, data: { status } });
   }
 
   async setCalendar(
+    ctx: AdminContext,
     villaId: number,
     dates: { date: string; price: number; status: number }[],
   ) {
+    await this.ensureVillaAccess(ctx, villaId);
+
     for (const item of dates) {
       await this.prisma.villaCalendar.upsert({
-        where: {
-          villaId_date: { villaId, date: new Date(item.date) },
-        },
-        create: {
-          villaId,
-          date: new Date(item.date),
-          price: item.price,
-          status: item.status,
-        },
-        update: {
-          price: item.price,
-          status: item.status,
-        },
+        where: { villaId_date: { villaId, date: new Date(item.date) } },
+        create: { villaId, date: new Date(item.date), price: item.price, status: item.status },
+        update: { price: item.price, status: item.status },
       });
     }
     return { success: true };
   }
 
+  private async ensureVillaAccess(ctx: AdminContext, villaId: number) {
+    if (ctx.role === 'platform') return;
+    const villa = await this.prisma.villa.findUnique({ where: { id: villaId } });
+    if (!villa || Number(villa.merchantId) !== ctx.merchantId) {
+      throw new NotFoundException('别墅不存在或无权限');
+    }
+  }
+
   // ==================== 订单管理 ====================
 
-  async getOrders(page = 1, pageSize = 10, status?: number) {
-    const where: any = {};
+  async getOrders(ctx: AdminContext, page = 1, pageSize = 10, status?: number) {
+    const where: any = this.scopeWhere(ctx);
     if (status !== undefined) where.status = status;
 
     const [list, total] = await Promise.all([
@@ -169,6 +183,7 @@ export class AdminService {
         include: {
           user: { select: { nickname: true, phone: true } },
           villa: { select: { name: true } },
+          merchant: { select: { name: true } },
           orderPackages: true,
         },
       }),
@@ -178,41 +193,42 @@ export class AdminService {
     return { list, total, page, pageSize };
   }
 
-  async confirmOrder(id: number) {
+  async confirmOrder(ctx: AdminContext, id: number) {
     const order = await this.prisma.order.findUnique({ where: { id } });
     if (!order) throw new NotFoundException('订单不存在');
+    if (ctx.role === 'merchant' && Number(order.merchantId) !== ctx.merchantId) {
+      throw new NotFoundException('订单不存在');
+    }
     if (order.status !== 1) throw new BadRequestException('订单状态不可确认');
 
-    // 更新日历为已预订
     for (let i = 0; i < order.days; i++) {
       const d = new Date(order.checkIn);
       d.setDate(d.getDate() + i);
       await this.prisma.villaCalendar.upsert({
-        where: {
-          villaId_date: { villaId: order.villaId, date: d },
-        },
-        create: {
-          villaId: order.villaId,
-          date: d,
-          price: 0,
-          status: 2,
-        },
+        where: { villaId_date: { villaId: order.villaId, date: d } },
+        create: { villaId: order.villaId, date: d, price: 0, status: 2 },
         update: { status: 2 },
       });
     }
 
-    return this.prisma.order.update({
+    const updated = await this.prisma.order.update({
       where: { id },
       data: { status: 2, confirmedAt: new Date() },
     });
+
+    // 创建分账记录
+    await this.merchantService.createSettlement(id);
+
+    return updated;
   }
 
-  async rejectOrder(id: number, reason?: string) {
+  async rejectOrder(ctx: AdminContext, id: number, reason?: string) {
     const order = await this.prisma.order.findUnique({ where: { id } });
     if (!order) throw new NotFoundException('订单不存在');
+    if (ctx.role === 'merchant' && Number(order.merchantId) !== ctx.merchantId) {
+      throw new NotFoundException('订单不存在');
+    }
     if (order.status !== 1) throw new BadRequestException('订单状态不可拒绝');
-
-    // TODO: 触发微信退款
 
     return this.prisma.order.update({
       where: { id },
@@ -220,15 +236,15 @@ export class AdminService {
     });
   }
 
-  async refundDeposit(id: number, amount: number) {
+  async refundDeposit(ctx: AdminContext, id: number, amount: number) {
     const order = await this.prisma.order.findUnique({ where: { id } });
     if (!order) throw new NotFoundException('订单不存在');
+    if (ctx.role === 'merchant' && Number(order.merchantId) !== ctx.merchantId) {
+      throw new NotFoundException('订单不存在');
+    }
     if (order.status !== 4) throw new BadRequestException('订单状态不可退押金');
 
     const depositStatus = amount >= Number(order.depositAmount) ? 2 : 3;
-
-    // TODO: 触发微信退款（仅退押金部分）
-
     return this.prisma.order.update({
       where: { id },
       data: { status: 5, depositStatus },

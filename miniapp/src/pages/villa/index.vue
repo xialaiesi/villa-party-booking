@@ -10,6 +10,11 @@
     <!-- 基本信息 -->
     <view class="info-card">
       <text class="villa-name">{{ villa.name }}</text>
+      <view class="merchant-row" v-if="villa.merchant">
+        <image v-if="villa.merchant.logo" :src="villa.merchant.logo" class="merchant-logo" />
+        <text class="merchant-name">{{ villa.merchant.name }}</text>
+        <text class="merchant-badge">官方认证</text>
+      </view>
       <view class="villa-meta">
         <text>{{ villa.maxGuests }}人 · {{ villa.bedrooms }}卧 · {{ villa.area }}㎡</text>
       </view>
@@ -86,6 +91,10 @@ function goBooking() {
 .swiper-img { width: 100%; height: 100%; }
 .info-card { background: #fff; margin: 20rpx; padding: 30rpx; border-radius: 12rpx; }
 .villa-name { font-size: 36rpx; font-weight: bold; color: #333; display: block; }
+.merchant-row { display: flex; align-items: center; gap: 12rpx; margin-top: 12rpx; }
+.merchant-logo { width: 40rpx; height: 40rpx; border-radius: 50%; }
+.merchant-name { font-size: 24rpx; color: #666; }
+.merchant-badge { font-size: 20rpx; color: #ff6b35; background: #fff3ed; padding: 2rpx 12rpx; border-radius: 10rpx; }
 .villa-meta { font-size: 26rpx; color: #666; margin-top: 12rpx; }
 .villa-address { font-size: 24rpx; color: #999; margin-top: 8rpx; display: block; }
 .price-row { margin-top: 20rpx; display: flex; align-items: baseline; gap: 12rpx; }

@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { AdminAuthController } from './admin-auth.controller';
@@ -7,10 +7,12 @@ import { AdminOrderController } from './admin-order.controller';
 import { DashboardController } from './dashboard.controller';
 import { AdminService } from './admin.service';
 import { VillaModule } from '../villa/villa.module';
+import { MerchantModule } from '../merchant/merchant.module';
 
 @Module({
   imports: [
     VillaModule,
+    forwardRef(() => MerchantModule),
     JwtModule.registerAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
@@ -26,5 +28,6 @@ import { VillaModule } from '../villa/villa.module';
     DashboardController,
   ],
   providers: [AdminService],
+  exports: [AdminService],
 })
 export class AdminModule {}

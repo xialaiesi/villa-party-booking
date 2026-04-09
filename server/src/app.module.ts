@@ -25,6 +25,7 @@ import { SeasonalEventModule } from './modules/seasonal-event/seasonal-event.mod
 import { AiPlannerModule } from './modules/ai-planner/ai-planner.module';
 import { PackageModule } from './modules/package/package.module';
 import { FacilityModule } from './modules/facility/facility.module';
+import { MerchantModule } from './modules/merchant/merchant.module';
 
 @Module({
   imports: [
@@ -50,6 +51,7 @@ import { FacilityModule } from './modules/facility/facility.module';
     AiPlannerModule,
     PackageModule,
     FacilityModule,
+    MerchantModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: AllExceptionsFilter },

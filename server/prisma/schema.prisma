@@ -6,10 +6,69 @@ datasource db {
   provider = "mysql"
 }
 
+// ==================== 商家/租户 ====================
+
+model Merchant {
+  id             BigInt   @id @default(autoincrement())
+  name           String   @db.VarChar(100) // 商家名称
+  logo           String?  @db.VarChar(500)
+  description    String?  @db.Text
+  contactName    String   @map("contact_name") @db.VarChar(50)
+  contactPhone   String   @map("contact_phone") @db.VarChar(20)
+  email          String?  @db.VarChar(100)
+  address        String?  @db.VarChar(255)
+  // 结算账户
+  bankName       String?  @map("bank_name") @db.VarChar(100)
+  bankAccount    String?  @map("bank_account") @db.VarChar(50)
+  accountHolder  String?  @map("account_holder") @db.VarChar(50)
+  // 分账比例（0-1之间，1=全额归商家，平台免佣）
+  commissionRate Decimal  @default(0) @map("commission_rate") @db.Decimal(4, 3)
+  // 累计数据
+  totalRevenue   Decimal  @default(0) @map("total_revenue") @db.Decimal(12, 2)
+  settledAmount  Decimal  @default(0) @map("settled_amount") @db.Decimal(12, 2)
+  pendingAmount  Decimal  @default(0) @map("pending_amount") @db.Decimal(12, 2)
+  status         Int      @default(1) @db.TinyInt // 0-停用 1-正常
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  admins         Admin[]
+  villas         Villa[]
+  packages       Package[]
+  facilities     Facility[]
+  themePacks     ThemePack[]
+  activityPlans  ActivityPlan[]
+  localServices  LocalService[]
+  seasonalEvents SeasonalEvent[]
+  orders         Order[]
+  settlements    Settlement[]
+
+  @@map("merchant")
+}
+
+// 分账/结算记录
+model Settlement {
+  id         BigInt   @id @default(autoincrement())
+  merchantId BigInt   @map("merchant_id")
+  orderId    BigInt   @unique @map("order_id")
+  orderNo    String   @map("order_no") @db.VarChar(32)
+  amount     Decimal  @db.Decimal(10, 2) // 订单金额
+  commission Decimal  @default(0) @db.Decimal(10, 2) // 平台佣金
+  netAmount  Decimal  @map("net_amount") @db.Decimal(10, 2) // 商家实得
+  status     Int      @default(0) @db.TinyInt // 0-待结算 1-已结算
+  settledAt  DateTime? @map("settled_at")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  merchant Merchant @relation(fields: [merchantId], references: [id])
+  order    Order    @relation(fields: [orderId], references: [id])
+
+  @@map("settlement")
+}
+
 // ==================== 别墅相关 ====================
 
 model Villa {
   id           BigInt   @id @default(autoincrement())
+  merchantId   BigInt   @map("merchant_id")
   name         String   @db.VarChar(100)
   description  String?  @db.Text
   address      String   @db.VarChar(255)
@@ -31,6 +90,7 @@ model Villa {
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
+  merchant   Merchant @relation(fields: [merchantId], references: [id])
   images     VillaImage[]
   facilities VillaFacility[]
   calendars  VillaCalendar[]
@@ -40,6 +100,7 @@ model Villa {
   posts          Post[]
   seasonalEvents SeasonalEvent[] @relation("SeasonalVilla")
 
+  @@index([merchantId])
   @@map("villa")
 }
 
@@ -55,13 +116,16 @@ model VillaImage {
 }
 
 model Facility {
-  id       BigInt  @id @default(autoincrement())
-  name     String  @db.VarChar(50)
-  icon     String? @db.VarChar(200)
-  category String? @db.VarChar(50)
+  id         BigInt  @id @default(autoincrement())
+  merchantId BigInt  @map("merchant_id")
+  name       String  @db.VarChar(50)
+  icon       String? @db.VarChar(200)
+  category   String? @db.VarChar(50)
 
-  villas VillaFacility[]
+  merchant Merchant        @relation(fields: [merchantId], references: [id])
+  villas   VillaFacility[]
 
+  @@index([merchantId])
   @@map("facility")
 }
 
@@ -93,6 +157,7 @@ model VillaCalendar {
 
 model Package {
   id           BigInt   @id @default(autoincrement())
+  merchantId   BigInt   @map("merchant_id")
   name         String   @db.VarChar(100)
   description  String?  @db.Text
   price        Decimal  @db.Decimal(10, 2)
@@ -102,9 +167,11 @@ model Package {
   image        String?  @db.VarChar(500)
   status       Int      @default(1) @db.TinyInt
 
+  merchant      Merchant       @relation(fields: [merchantId], references: [id])
   orderPackages OrderPackage[]
   planPackages  PlanPackage[]
 
+  @@index([merchantId])
   @@map("package")
 }
 
@@ -141,6 +208,7 @@ model User {
 model Order {
   id             BigInt    @id @default(autoincrement())
   orderNo        String    @unique @map("order_no") @db.VarChar(32)
+  merchantId     BigInt    @map("merchant_id")
   userId         BigInt    @map("user_id")
   villaId        BigInt    @map("villa_id")
   checkIn        DateTime  @map("check_in") @db.Date
@@ -163,6 +231,7 @@ model Order {
   paidAt         DateTime? @map("paid_at")
   confirmedAt    DateTime? @map("confirmed_at")
 
+  merchant      Merchant       @relation(fields: [merchantId], references: [id])
   user          User           @relation(fields: [userId], references: [id])
   villa         Villa          @relation(fields: [villaId], references: [id])
   orderPackages OrderPackage[]
@@ -173,7 +242,9 @@ model Order {
   tasks          OrderTask[]
   serviceOrders  ServiceOrder[]
   corporateOrder CorporateOrder?
+  settlement     Settlement?
 
+  @@index([merchantId])
   @@map("order")
 }
 
@@ -232,6 +303,7 @@ model Review {
 
 model ActivityPlan {
   id          BigInt   @id @default(autoincrement())
+  merchantId  BigInt   @map("merchant_id")
   name        String   @db.VarChar(100)
   description String?  @db.Text
   scene       String   @db.VarChar(50) // 团建/生日/聚会/亲子
@@ -244,9 +316,11 @@ model ActivityPlan {
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
+  merchant Merchant      @relation(fields: [merchantId], references: [id])
   steps    PlanStep[]
   packages PlanPackage[]
 
+  @@index([merchantId])
   @@map("activity_plan")
 }
 
@@ -347,6 +421,7 @@ model AlbumPhoto {
 
 model ThemePack {
   id          BigInt  @id @default(autoincrement())
+  merchantId  BigInt  @map("merchant_id")
   name        String  @db.VarChar(100) // 赛博朋克之夜、复古迪斯科等
   description String? @db.Text
   theme       String  @db.VarChar(50) // 赛博朋克/复古/露营/ins风/派对
@@ -359,6 +434,9 @@ model ThemePack {
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
+  merchant Merchant @relation(fields: [merchantId], references: [id])
+
+  @@index([merchantId])
   @@map("theme_pack")
 }
 
@@ -419,6 +497,7 @@ model OrderTask {
 
 model LocalService {
   id          BigInt   @id @default(autoincrement())
+  merchantId  BigInt   @map("merchant_id")
   name        String   @db.VarChar(100)
   category    String   @db.VarChar(50) // 厨师/摄影/DJ/调酒/蛋糕/教练
   description String?  @db.Text
@@ -432,8 +511,10 @@ model LocalService {
   sortOrder   Int      @default(0) @map("sort_order")
   createdAt   DateTime @default(now()) @map("created_at")
 
+  merchant      Merchant       @relation(fields: [merchantId], references: [id])
   serviceOrders ServiceOrder[]
 
+  @@index([merchantId])
   @@map("local_service")
 }
 
@@ -529,6 +610,7 @@ model CorporateOrder {
 
 model SeasonalEvent {
   id          BigInt   @id @default(autoincrement())
+  merchantId  BigInt   @map("merchant_id")
   name        String   @db.VarChar(100)
   description String?  @db.Text
   coverImage  String?  @map("cover_image") @db.VarChar(500)
@@ -544,8 +626,10 @@ model SeasonalEvent {
   status      Int      @default(1) @db.TinyInt
   createdAt   DateTime @default(now()) @map("created_at")
 
-  villa Villa? @relation("SeasonalVilla", fields: [villaId], references: [id])
+  merchant Merchant @relation(fields: [merchantId], references: [id])
+  villa    Villa?   @relation("SeasonalVilla", fields: [villaId], references: [id])
 
+  @@index([merchantId])
   @@map("seasonal_event")
 }
 
@@ -581,12 +665,17 @@ model ChatMessage {
 // ==================== 管理员 ====================
 
 model Admin {
-  id        BigInt   @id @default(autoincrement())
-  username  String   @unique @db.VarChar(50)
-  password  String   @db.VarChar(255)
-  nickname  String?  @db.VarChar(50)
-  status    Int      @default(1) @db.TinyInt
-  createdAt DateTime @default(now()) @map("created_at")
+  id         BigInt   @id @default(autoincrement())
+  username   String   @unique @db.VarChar(50)
+  password   String   @db.VarChar(255)
+  nickname   String?  @db.VarChar(50)
+  role       String   @default("merchant") @db.VarChar(20) // platform | merchant
+  merchantId BigInt?  @map("merchant_id") // platform 角色为 null
+  status     Int      @default(1) @db.TinyInt
+  createdAt  DateTime @default(now()) @map("created_at")
 
+  merchant Merchant? @relation(fields: [merchantId], references: [id])
+
+  @@index([merchantId])
   @@map("admin")
 }

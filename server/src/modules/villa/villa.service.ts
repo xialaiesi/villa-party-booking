@@ -71,6 +71,7 @@ export class VillaService {
       include: {
         images: { orderBy: { sortOrder: 'asc' } },
         facilities: { include: { facility: true } },
+        merchant: { select: { id: true, name: true, logo: true } },
       },
     });
     if (!villa) throw new NotFoundException('别墅不存在');

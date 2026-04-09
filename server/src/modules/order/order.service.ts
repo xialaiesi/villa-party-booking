@@ -109,6 +109,7 @@ export class OrderService {
     const order = await this.prisma.order.create({
       data: {
         orderNo,
+        merchantId: villa.merchantId,
         userId,
         villaId: dto.villaId,
         checkIn,

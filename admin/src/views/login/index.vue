@@ -24,8 +24,10 @@ import { reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import { login } from '../../api/auth';
+import { useUserStore } from '../../store/user';
 
 const router = useRouter();
+const userStore = useUserStore();
 const loading = ref(false);
 const form = reactive({ username: '', password: '' });
 
@@ -38,6 +40,7 @@ async function handleLogin() {
   try {
     const data: any = await login(form.username, form.password);
     localStorage.setItem('admin_token', data.token);
+    userStore.setInfo(data.admin);
     router.push('/');
     ElMessage.success('登录成功');
   } catch (e) {

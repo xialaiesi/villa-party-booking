@@ -1,12 +1,22 @@
 <template>
   <el-container class="layout">
     <el-aside width="220px" class="aside">
-      <div class="logo">别墅轰趴</div>
+      <div class="logo">
+        <div>别墅轰趴</div>
+        <div class="role-tag">{{ roleLabel }}</div>
+      </div>
       <el-menu :default-active="route.path" router class="menu">
         <el-menu-item index="/dashboard">
           <el-icon><DataAnalysis /></el-icon>
           <span>数据看板</span>
         </el-menu-item>
+
+        <!-- 平台超管专属 -->
+        <el-menu-item v-if="userStore.isPlatform" index="/merchant">
+          <el-icon><OfficeBuilding /></el-icon>
+          <span>商家管理</span>
+        </el-menu-item>
+
         <el-menu-item index="/villa">
           <el-icon><House /></el-icon>
           <span>房源管理</span>
@@ -43,12 +53,21 @@
           <el-icon><Star /></el-icon>
           <span>限定活动</span>
         </el-menu-item>
+
+        <!-- 财务中心 -->
+        <el-menu-item index="/finance">
+          <el-icon><Money /></el-icon>
+          <span>{{ userStore.isPlatform ? '结算管理' : '财务中心' }}</span>
+        </el-menu-item>
       </el-menu>
     </el-aside>
     <el-container>
       <el-header class="header">
         <span>{{ route.meta.title }}</span>
-        <el-button text @click="handleLogout">退出登录</el-button>
+        <div class="header-right">
+          <span class="user-name">{{ userStore.info?.nickname || userStore.info?.username }}</span>
+          <el-button text @click="handleLogout">退出登录</el-button>
+        </div>
       </el-header>
       <el-main class="main">
         <router-view />
@@ -58,14 +77,26 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { DataAnalysis, House, Calendar, ShoppingBag, Document, Setting, List, Present, Service, Star } from '@element-plus/icons-vue';
+import {
+  DataAnalysis, House, Calendar, ShoppingBag, Document, Setting,
+  List, Present, Service, Star, OfficeBuilding, Money,
+} from '@element-plus/icons-vue';
+import { useUserStore } from '../../store/user';
 
 const route = useRoute();
 const router = useRouter();
+const userStore = useUserStore();
+
+const roleLabel = computed(() => {
+  if (userStore.isPlatform) return '平台超管';
+  if (userStore.isMerchant) return userStore.info?.merchantName || '商家';
+  return '';
+});
 
 function handleLogout() {
-  localStorage.removeItem('admin_token');
+  userStore.clear();
   router.push('/login');
 }
 </script>
@@ -73,11 +104,15 @@ function handleLogout() {
 <style scoped>
 .layout { height: 100vh; }
 .aside { background: #304156; overflow-y: auto; }
-.logo { color: #fff; font-size: 18px; font-weight: bold; text-align: center; padding: 20px 0; border-bottom: 1px solid #3a4a5e; }
+.logo { color: #fff; text-align: center; padding: 20px 0; border-bottom: 1px solid #3a4a5e; }
+.logo > div:first-child { font-size: 18px; font-weight: bold; }
+.role-tag { font-size: 11px; color: #8ba0b4; margin-top: 4px; }
 .menu { border-right: none; background: #304156; }
 .menu .el-menu-item { color: #bfcbd9; }
 .menu .el-menu-item:hover { background: #263445; }
 .menu .el-menu-item.is-active { background: #1890ff; color: #fff; }
 .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; background: #fff; }
+.header-right { display: flex; align-items: center; gap: 16px; }
+.user-name { color: #606266; font-size: 14px; }
 .main { background: #f0f2f5; }
 </style>
