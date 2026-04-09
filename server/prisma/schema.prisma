@@ -100,6 +100,7 @@ model Package {
   status       Int      @default(1) @db.TinyInt
 
   orderPackages OrderPackage[]
+  planPackages  PlanPackage[]
 
   @@map("package")
 }
@@ -115,8 +116,12 @@ model User {
   phone     String?  @db.VarChar(20)
   createdAt DateTime @default(now()) @map("created_at")
 
-  orders  Order[]
-  reviews Review[]
+  orders         Order[]
+  reviews        Review[]
+  initiatedShares OrderShare[] @relation("ShareInitiator")
+  sharePayments  SharePayment[]
+  createdAlbums  Album[]       @relation("AlbumCreator")
+  uploadedPhotos AlbumPhoto[]  @relation("PhotoUploader")
 
   @@map("user")
 }
@@ -153,6 +158,8 @@ model Order {
   orderPackages OrderPackage[]
   payments      Payment[]
   reviews       Review[]
+  shares        OrderShare[]
+  albums        Album[]
 
   @@map("order")
 }
@@ -206,6 +213,121 @@ model Review {
   villa Villa @relation(fields: [villaId], references: [id])
 
   @@map("review")
+}
+
+// ==================== 轰趴剧本 ====================
+
+model ActivityPlan {
+  id          BigInt   @id @default(autoincrement())
+  name        String   @db.VarChar(100)
+  description String?  @db.Text
+  scene       String   @db.VarChar(50) // 团建/生日/聚会/亲子
+  minGuests   Int      @default(5) @map("min_guests")
+  maxGuests   Int      @default(20) @map("max_guests")
+  duration    String?  @db.VarChar(50) // 如 "4小时"、"全天"
+  coverImage  String?  @map("cover_image") @db.VarChar(500)
+  status      Int      @default(1) @db.TinyInt
+  sortOrder   Int      @default(0) @map("sort_order")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  steps    PlanStep[]
+  packages PlanPackage[]
+
+  @@map("activity_plan")
+}
+
+model PlanStep {
+  id        BigInt  @id @default(autoincrement())
+  planId    BigInt  @map("plan_id")
+  sortOrder Int     @default(0) @map("sort_order")
+  time      String? @db.VarChar(50) // 如 "14:00-14:30"
+  title     String  @db.VarChar(100)
+  content   String? @db.Text
+  tips      String? @db.Text // 执行小贴士
+
+  plan ActivityPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  @@map("plan_step")
+}
+
+model PlanPackage {
+  id        BigInt @id @default(autoincrement())
+  planId    BigInt @map("plan_id")
+  packageId BigInt @map("package_id")
+  required  Int    @default(0) @db.TinyInt // 0-可选 1-必需
+
+  plan    ActivityPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  package Package      @relation(fields: [packageId], references: [id])
+
+  @@map("plan_package")
+}
+
+// ==================== 费用AA分摊 ====================
+
+model OrderShare {
+  id          BigInt    @id @default(autoincrement())
+  orderId     BigInt    @map("order_id")
+  initiatorId BigInt    @map("initiator_id") // 发起人
+  shareMode   Int       @db.TinyInt // 1-平均 2-自定义
+  totalAmount Decimal   @map("total_amount") @db.Decimal(10, 2)
+  memberCount Int       @map("member_count")
+  expireAt    DateTime? @map("expire_at") // 最晚支付时间
+  status      Int       @default(0) @db.TinyInt // 0-进行中 1-全员已付 2-已取消
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  order     Order          @relation(fields: [orderId], references: [id])
+  initiator User           @relation("ShareInitiator", fields: [initiatorId], references: [id])
+  payments  SharePayment[]
+
+  @@map("order_share")
+}
+
+model SharePayment {
+  id       BigInt   @id @default(autoincrement())
+  shareId  BigInt   @map("share_id")
+  userId   BigInt   @map("user_id")
+  amount   Decimal  @db.Decimal(10, 2)
+  status   Int      @default(0) @db.TinyInt // 0-待支付 1-已支付
+  paidAt   DateTime? @map("paid_at")
+
+  share OrderShare @relation(fields: [shareId], references: [id], onDelete: Cascade)
+  user  User       @relation(fields: [userId], references: [id])
+
+  @@map("share_payment")
+}
+
+// ==================== 趴后回忆 ====================
+
+model Album {
+  id        BigInt   @id @default(autoincrement())
+  orderId   BigInt   @map("order_id")
+  creatorId BigInt   @map("creator_id")
+  title     String?  @db.VarChar(100)
+  inviteCode String  @unique @map("invite_code") @db.VarChar(20)
+  status    Int      @default(1) @db.TinyInt // 0-关闭 1-开放
+  expireAt  DateTime @map("expire_at") // 有效期1年
+  createdAt DateTime @default(now()) @map("created_at")
+
+  order   Order        @relation(fields: [orderId], references: [id])
+  creator User         @relation("AlbumCreator", fields: [creatorId], references: [id])
+  photos  AlbumPhoto[]
+
+  @@map("album")
+}
+
+model AlbumPhoto {
+  id        BigInt   @id @default(autoincrement())
+  albumId   BigInt   @map("album_id")
+  userId    BigInt   @map("user_id")
+  url       String   @db.VarChar(500)
+  caption   String?  @db.VarChar(200)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  album Album @relation(fields: [albumId], references: [id], onDelete: Cascade)
+  user  User  @relation("PhotoUploader", fields: [userId], references: [id])
+
+  @@map("album_photo")
 }
 
 // ==================== 管理员 ====================

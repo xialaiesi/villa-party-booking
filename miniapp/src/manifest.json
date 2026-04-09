@@ -1,7 +1,7 @@
 {
-    "name" : "",
+    "name" : "别墅轰趴",
     "appid" : "",
-    "description" : "",
+    "description" : "别墅轰趴预订小程序",
     "versionName" : "1.0.0",
     "versionCode" : "100",
     "transformPx" : false,
@@ -50,7 +50,7 @@
     "quickapp" : {},
     /* 小程序特有相关 */
     "mp-weixin" : {
-        "appid" : "",
+        "appid" : "wx997e324da999d56b",
         "setting" : {
             "urlCheck" : false
         },

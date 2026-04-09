@@ -17,6 +17,7 @@ const routes = [
       { path: 'package', component: () => import('../views/package/index.vue'), meta: { title: '套餐管理' } },
       { path: 'order', component: () => import('../views/order/index.vue'), meta: { title: '订单管理' } },
       { path: 'facility', component: () => import('../views/facility/index.vue'), meta: { title: '设施管理' } },
+      { path: 'activity-plan', component: () => import('../views/activity-plan/index.vue'), meta: { title: '活动方案' } },
     ],
   },
 ];

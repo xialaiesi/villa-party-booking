@@ -27,6 +27,10 @@
           <el-icon><Setting /></el-icon>
           <span>设施管理</span>
         </el-menu-item>
+        <el-menu-item index="/activity-plan">
+          <el-icon><List /></el-icon>
+          <span>活动方案</span>
+        </el-menu-item>
       </el-menu>
     </el-aside>
     <el-container>
@@ -43,7 +47,7 @@
 
 <script setup lang="ts">
 import { useRoute, useRouter } from 'vue-router';
-import { DataAnalysis, House, Calendar, ShoppingBag, Document, Setting } from '@element-plus/icons-vue';
+import { DataAnalysis, House, Calendar, ShoppingBag, Document, Setting, List } from '@element-plus/icons-vue';
 
 const route = useRoute();
 const router = useRouter();

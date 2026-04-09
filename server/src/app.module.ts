@@ -11,6 +11,9 @@ import { VillaModule } from './modules/villa/villa.module';
 import { OrderModule } from './modules/order/order.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { AiModule } from './modules/ai/ai.module';
+import { ActivityPlanModule } from './modules/activity-plan/activity-plan.module';
+import { OrderShareModule } from './modules/order-share/order-share.module';
+import { AlbumModule } from './modules/album/album.module';
 
 @Module({
   imports: [
@@ -22,6 +25,9 @@ import { AiModule } from './modules/ai/ai.module';
     OrderModule,
     AdminModule,
     AiModule,
+    ActivityPlanModule,
+    OrderShareModule,
+    AlbumModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: AllExceptionsFilter },

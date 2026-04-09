@@ -32,7 +32,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onLoad } from '@dcloudio/uni-app';
+import { ref } from 'vue';
+import { onLoad } from '@dcloudio/uni-app';
 import { listVillas } from '../../api/villa';
 
 const villaList = ref<any[]>([]);

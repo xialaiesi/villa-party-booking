@@ -1,7 +1,10 @@
+import 'dotenv/config';
 import { PrismaClient } from '@prisma/client';
+import { PrismaMariaDb } from '@prisma/adapter-mariadb';
 import * as crypto from 'crypto';
 
-const prisma = new PrismaClient();
+const adapter = new PrismaMariaDb(process.env.DATABASE_URL!);
+const prisma = new PrismaClient({ adapter } as any);
 
 async function main() {
   // 创建管理员（密码: admin123）

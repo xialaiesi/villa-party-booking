@@ -55,7 +55,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onLoad } from '@dcloudio/uni-app';
+import { ref } from 'vue';
+import { onLoad } from '@dcloudio/uni-app';
 import { getVilla } from '../../api/villa';
 
 const villa = ref<any>(null);

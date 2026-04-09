@@ -39,7 +39,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onLoad } from '@dcloudio/uni-app';
+import { ref } from 'vue';
+import { onLoad } from '@dcloudio/uni-app';
 import { getOrder, cancelOrder, payOrder } from '../../api/order';
 
 const order = ref<any>(null);
