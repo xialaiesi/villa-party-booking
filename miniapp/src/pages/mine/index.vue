@@ -130,8 +130,16 @@ function goOrders(_status: number) {
   uni.switchTab({ url: '/pages/order/index' });
 }
 
+// tab bar 页面白名单
+const TAB_PAGES = ['/pages/index/index', '/pages/community/index', '/pages/order/index', '/pages/mine/index'];
+
 function goPage(url: string) {
-  uni.navigateTo({ url });
+  const path = url.split('?')[0];
+  if (TAB_PAGES.includes(path)) {
+    uni.switchTab({ url: path });
+  } else {
+    uni.navigateTo({ url });
+  }
 }
 
 function goMessages() {

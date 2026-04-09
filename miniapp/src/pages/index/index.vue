@@ -166,8 +166,15 @@ function goDetail(id: number) {
   uni.navigateTo({ url: `/pages/villa/index?id=${id}` });
 }
 
+const TAB_PAGES = ['/pages/index/index', '/pages/community/index', '/pages/order/index', '/pages/mine/index'];
+
 function goPage(url: string) {
-  uni.navigateTo({ url });
+  const path = url.split('?')[0];
+  if (TAB_PAGES.includes(path)) {
+    uni.switchTab({ url: path });
+  } else {
+    uni.navigateTo({ url });
+  }
 }
 
 function goBanner(b: any) {

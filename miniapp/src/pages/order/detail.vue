@@ -162,7 +162,7 @@ function handleAction(key: string) {
     case 'service': uni.navigateTo({ url: '/pages/service/index' }); break;
     case 'contact': uni.makePhoneCall({ phoneNumber: '10086' }); break;
     case 'album': uni.navigateTo({ url: '/pages/album/index' }); break;
-    case 'post': uni.navigateTo({ url: '/pages/community/index' }); break;
+    case 'post': uni.switchTab({ url: '/pages/community/index' }); break;
   }
 }
 
