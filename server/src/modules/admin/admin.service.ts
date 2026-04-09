@@ -89,12 +89,21 @@ export class AdminService {
   async createVilla(ctx: AdminContext, data: any) {
     const { facilities, images, ...villaData } = data;
 
-    // 商家角色强制归属自己
-    const merchantId =
+    // 商家角色强制归属自己；平台超管未指定时回退到第一个商家
+    let merchantId: number | null =
       ctx.role === 'platform'
         ? data.merchantId || ctx.merchantId
         : ctx.merchantId;
-    if (!merchantId) throw new BadRequestException('缺少 merchantId');
+
+    if (!merchantId && ctx.role === 'platform') {
+      const firstMerchant = await this.prisma.merchant.findFirst({
+        where: { status: 1 },
+        orderBy: { id: 'asc' },
+      });
+      if (firstMerchant) merchantId = Number(firstMerchant.id);
+    }
+
+    if (!merchantId) throw new BadRequestException('请先创建商家');
 
     return this.prisma.villa.create({
       data: {
