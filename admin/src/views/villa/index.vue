@@ -142,7 +142,13 @@
     </el-dialog>
 
     <!-- 从 URL 导入 -->
-    <el-dialog v-model="importVisible" title="从 URL 导入别墅信息" width="600px">
+    <el-dialog
+      v-model="importVisible"
+      title="从 URL 导入别墅信息"
+      width="600px"
+      :close-on-click-modal="false"
+      @close="handleImportClose"
+    >
       <el-alert
         type="info"
         :closable="false"
@@ -189,9 +195,6 @@
               :src="resolveUrl(img)"
               fit="cover"
               style="width: 80px; height: 60px; margin: 4px; border-radius: 4px;"
-              :preview-src-list="importResult.images.map(resolveUrl)"
-              :initial-index="i"
-              preview-teleported
             />
             <span v-if="importResult.images.length > 6">...+{{ importResult.images.length - 6 }}</span>
           </div>
@@ -270,6 +273,11 @@ const importVisible = ref(false);
 const importUrl = ref('');
 const importLoading = ref(false);
 const importResult = ref<any>(null);
+
+function handleImportClose() {
+  importResult.value = null;
+  importUrl.value = '';
+}
 
 async function handleFetchUrl() {
   if (!importUrl.value) {
