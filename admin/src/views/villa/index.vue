@@ -280,14 +280,17 @@ function handleImportClose() {
 }
 
 async function handleFetchUrl() {
-  if (!importUrl.value) {
+  // 去除前后空格和换行（兼容复制粘贴带空格的情况）
+  const url = importUrl.value?.trim().replace(/[\r\n]/g, '');
+  if (!url) {
     ElMessage.warning('请输入 URL');
     return;
   }
+  importUrl.value = url; // 回填清理后的值
   importLoading.value = true;
   importResult.value = null;
   try {
-    importResult.value = await importFromUrl(importUrl.value);
+    importResult.value = await importFromUrl(url);
     ElMessage.success('抓取成功，请预览确认');
   } catch (e) {
     // 错误由拦截器处理

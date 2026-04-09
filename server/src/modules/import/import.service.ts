@@ -54,6 +54,8 @@ export class ImportService {
    * 支持：简篇(jianpian.cn)、美篇、普通网页
    */
   async importFromUrl(url: string, useAi = true): Promise<ImportedData> {
+    // 清理 URL：去除前后空格、换行
+    url = (url || '').trim().replace(/[\r\n\s]+/g, '');
     if (!url || !/^https?:\/\//.test(url)) {
       throw new BadRequestException('无效的 URL');
     }
