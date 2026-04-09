@@ -28,6 +28,7 @@ import { FacilityModule } from './modules/facility/facility.module';
 import { MerchantModule } from './modules/merchant/merchant.module';
 import { HomeModule } from './modules/home/home.module';
 import { MessageModule } from './modules/message/message.module';
+import { ImportModule } from './modules/import/import.module';
 
 @Module({
   imports: [
@@ -56,6 +57,7 @@ import { MessageModule } from './modules/message/message.module';
     MerchantModule,
     HomeModule,
     MessageModule,
+    ImportModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: AllExceptionsFilter },

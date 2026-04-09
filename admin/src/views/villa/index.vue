@@ -2,6 +2,10 @@
   <div>
     <div class="toolbar">
       <el-button type="primary" @click="openDialog()">新增别墅</el-button>
+      <el-button type="success" @click="importVisible = true">
+        <el-icon style="margin-right: 4px;"><Link /></el-icon>
+        从 URL 导入
+      </el-button>
     </div>
     <el-table :data="villaList" border stripe>
       <el-table-column prop="id" label="ID" width="80" />
@@ -106,14 +110,75 @@
         <el-button type="primary" @click="handleSubmit">确定</el-button>
       </template>
     </el-dialog>
+
+    <!-- 从 URL 导入 -->
+    <el-dialog v-model="importVisible" title="从 URL 导入别墅信息" width="600px">
+      <el-alert
+        type="info"
+        :closable="false"
+        description="支持从简篇、美篇等网页导入：自动抓取标题、图片、并用 AI/规则提取别墅信息"
+        style="margin-bottom: 16px;"
+      />
+      <el-form label-width="80px">
+        <el-form-item label="页面 URL">
+          <el-input
+            v-model="importUrl"
+            type="textarea"
+            :rows="2"
+            placeholder="如：https://www.jianpian.cn/a/xxxxx"
+          />
+        </el-form-item>
+      </el-form>
+
+      <div v-if="importResult" class="import-preview">
+        <el-divider>抓取结果</el-divider>
+        <div class="preview-item">
+          <strong>标题：</strong>{{ importResult.title }}
+        </div>
+        <div class="preview-item" v-if="importResult.structured">
+          <strong>识别信息：</strong>
+          <div class="struct-grid">
+            <span v-if="importResult.structured.name">名称：{{ importResult.structured.name }}</span>
+            <span v-if="importResult.structured.maxGuests">人数：{{ importResult.structured.maxGuests }}人</span>
+            <span v-if="importResult.structured.bedrooms">卧室：{{ importResult.structured.bedrooms }}间</span>
+            <span v-if="importResult.structured.area">面积：{{ importResult.structured.area }}㎡</span>
+            <span v-if="importResult.structured.basePrice">价格：¥{{ importResult.structured.basePrice }}</span>
+            <span v-if="importResult.structured.facilities?.length">设施：{{ importResult.structured.facilities.join('/') }}</span>
+          </div>
+        </div>
+        <div class="preview-item">
+          <strong>图片（{{ importResult.images.length }} 张）：</strong>
+          <div class="preview-imgs">
+            <el-image
+              v-for="(img, i) in importResult.images.slice(0, 6)"
+              :key="i"
+              :src="img"
+              fit="cover"
+              style="width: 80px; height: 60px; margin: 4px; border-radius: 4px;"
+              :preview-src-list="importResult.images"
+              :initial-index="i"
+            />
+            <span v-if="importResult.images.length > 6">...+{{ importResult.images.length - 6 }}</span>
+          </div>
+        </div>
+      </div>
+
+      <template #footer>
+        <el-button @click="importVisible = false">取消</el-button>
+        <el-button type="primary" :loading="importLoading" @click="handleFetchUrl">抓取</el-button>
+        <el-button type="success" v-if="importResult" @click="handleUseImport">使用这些数据创建</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted, reactive } from 'vue';
 import { ElMessage } from 'element-plus';
+import { Link } from '@element-plus/icons-vue';
 import { getVillas, createVilla, updateVilla, updateVillaStatus } from '../../api/villa';
 import { analyzeImages, generateDescription } from '../../api/ai';
+import { importFromUrl } from '../../api/import';
 
 const villaList = ref<any[]>([]);
 const page = ref(1);
@@ -132,6 +197,62 @@ const imageAnalysis = ref<any[]>([]);
 const newImageUrl = ref('');
 const aiLoading = ref(false);
 const descLoading = ref(false);
+
+// 从 URL 导入
+const importVisible = ref(false);
+const importUrl = ref('');
+const importLoading = ref(false);
+const importResult = ref<any>(null);
+
+async function handleFetchUrl() {
+  if (!importUrl.value) {
+    ElMessage.warning('请输入 URL');
+    return;
+  }
+  importLoading.value = true;
+  importResult.value = null;
+  try {
+    importResult.value = await importFromUrl(importUrl.value);
+    ElMessage.success('抓取成功，请预览确认');
+  } catch (e) {
+    // 错误由拦截器处理
+  } finally {
+    importLoading.value = false;
+  }
+}
+
+function handleUseImport() {
+  const r = importResult.value;
+  if (!r) return;
+  const s = r.structured || {};
+
+  // 填入表单
+  Object.assign(form, {
+    name: s.name || r.title || '',
+    address: s.address || '',
+    maxGuests: s.maxGuests || 10,
+    bedrooms: s.bedrooms || 3,
+    area: s.area || 200,
+    basePrice: s.basePrice || 0,
+    weekendPrice: s.weekendPrice || (s.basePrice ? Math.round(s.basePrice * 1.3) : 0),
+    deposit: s.deposit || 500,
+    description: s.summary || r.description || '',
+    tags: s.tags || '团建,生日,聚会',
+  });
+
+  // 填入图片
+  imageUrls.value = [...r.images];
+  imageAnalysis.value = [];
+
+  // 关闭导入弹窗，打开编辑弹窗
+  importVisible.value = false;
+  editingId.value = null;
+  dialogVisible.value = true;
+  importResult.value = null;
+  importUrl.value = '';
+
+  ElMessage.info('已填入数据，请确认后保存');
+}
 
 onMounted(() => loadData());
 
@@ -248,4 +369,9 @@ async function toggleStatus(row: any) {
 .image-input { display: flex; gap: 8px; }
 .image-list { margin-top: 12px; display: flex; flex-direction: column; gap: 8px; }
 .image-item { display: flex; align-items: center; gap: 8px; padding: 8px; background: #fafafa; border-radius: 6px; }
+.import-preview { max-height: 400px; overflow-y: auto; }
+.preview-item { margin-bottom: 16px; font-size: 14px; }
+.struct-grid { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 8px; }
+.struct-grid span { background: #f0f9ff; color: #1890ff; padding: 4px 12px; border-radius: 12px; font-size: 12px; }
+.preview-imgs { display: flex; flex-wrap: wrap; margin-top: 8px; align-items: center; }
 </style>
