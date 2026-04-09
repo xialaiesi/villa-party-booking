@@ -104,7 +104,12 @@ export class AdminService {
           ? { create: facilities.map((fId: number) => ({ facilityId: fId })) }
           : undefined,
         images: images?.length
-          ? { create: images.map((url: string, i: number) => ({ url, sortOrder: i })) }
+          ? {
+              create: images.map((img: any, i: number) => {
+                if (typeof img === 'string') return { url: img, sortOrder: i };
+                return { url: img.url, caption: img.caption || null, sortOrder: i };
+              }),
+            }
           : undefined,
       },
       include: { images: true, facilities: { include: { facility: true } } },
@@ -127,7 +132,10 @@ export class AdminService {
     if (images) {
       await this.prisma.villaImage.deleteMany({ where: { villaId: id } });
       await this.prisma.villaImage.createMany({
-        data: images.map((url: string, i: number) => ({ villaId: id, url, sortOrder: i })),
+        data: images.map((img: any, i: number) => {
+          if (typeof img === 'string') return { villaId: id, url: img, sortOrder: i };
+          return { villaId: id, url: img.url, caption: img.caption || null, sortOrder: i };
+        }),
       });
     }
 

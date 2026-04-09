@@ -1,4 +1,11 @@
-const BASE_URL = 'http://localhost:3000';
+export const BASE_URL = 'http://localhost:3000';
+
+/** 将服务器相对 URL 转为完整 URL */
+export function resolveImageUrl(url: string): string {
+  if (!url) return '';
+  if (url.startsWith('http')) return url;
+  return `${BASE_URL}${url}`;
+}
 
 interface RequestOptions {
   url: string;

@@ -33,3 +33,6 @@ miniapp/unpackage/
 
 # Admin
 admin/dist/
+
+# Uploaded files
+server/uploads/

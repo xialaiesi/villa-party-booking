@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { ServeStaticModule } from '@nestjs/serve-static';
 import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { join } from 'path';
 import { PrismaModule } from './prisma/prisma.module';
 import { RedisModule } from './common/redis/redis.module';
 import { AllExceptionsFilter } from './common/filters/http-exception.filter';
@@ -29,10 +31,15 @@ import { MerchantModule } from './modules/merchant/merchant.module';
 import { HomeModule } from './modules/home/home.module';
 import { MessageModule } from './modules/message/message.module';
 import { ImportModule } from './modules/import/import.module';
+import { UploadModule } from './modules/upload/upload.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    ServeStaticModule.forRoot({
+      rootPath: join(process.cwd(), 'uploads'),
+      serveRoot: '/uploads',
+    }),
     PrismaModule,
     RedisModule,
     AuthModule,
@@ -58,6 +65,7 @@ import { ImportModule } from './modules/import/import.module';
     HomeModule,
     MessageModule,
     ImportModule,
+    UploadModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: AllExceptionsFilter },

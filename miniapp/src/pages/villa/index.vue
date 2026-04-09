@@ -1,14 +1,17 @@
 <template>
   <view class="page" v-if="villa">
-    <!-- 轮播图 -->
+    <!-- 顶部轮播图（前 5 张） -->
     <swiper class="swiper" indicator-dots autoplay circular>
-      <swiper-item v-for="img in villa.images" :key="img.id">
-        <image :src="img.url" mode="aspectFill" class="swiper-img" />
+      <swiper-item v-for="(img, i) in topImages" :key="img.id" @tap="previewImage(i)">
+        <image :src="resolveImg(img.url)" mode="aspectFill" class="swiper-img" />
       </swiper-item>
       <swiper-item v-if="!villa.images?.length">
-        <image :src="villa.coverImage || '/static/logo.png'" mode="aspectFill" class="swiper-img" />
+        <image :src="resolveImg(villa.coverImage) || '/static/logo.png'" mode="aspectFill" class="swiper-img" />
       </swiper-item>
     </swiper>
+    <view class="img-count" v-if="villa.images?.length">
+      共 {{ villa.images.length }} 张图片
+    </view>
 
     <!-- 基本信息 -->
     <view class="info-card">
@@ -57,6 +60,25 @@
     <view class="info-card">
       <text class="card-title">别墅介绍</text>
       <text class="description">{{ villa.description }}</text>
+    </view>
+
+    <!-- 美篇式图集（所有图片大图 + 说明） -->
+    <view class="gallery" v-if="villa.images?.length">
+      <view class="gallery-title">
+        <text class="card-title">🏡 别墅实景</text>
+        <text class="gallery-sub">滑动查看全部 {{ villa.images.length }} 张</text>
+      </view>
+      <view
+        class="gallery-item"
+        v-for="(img, i) in villa.images"
+        :key="img.id"
+        @tap="previewImage(i)"
+      >
+        <image :src="resolveImg(img.url)" mode="widthFix" class="gallery-img" lazy-load />
+        <view class="gallery-caption" v-if="img.caption">
+          <text>{{ img.caption }}</text>
+        </view>
+      </view>
     </view>
 
     <!-- 相关活动方案 -->
@@ -122,9 +144,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import { onLoad } from '@dcloudio/uni-app';
 import { getVilla, getVillaReviews, getVillaPlans } from '../../api/villa';
+import { resolveImageUrl } from '../../utils/request';
 
 const villa = ref<any>(null);
 const reviews = ref<any[]>([]);
@@ -133,6 +156,19 @@ const plans = ref<any[]>([]);
 const showAllReviews = ref(false);
 const isFavorite = ref(false);
 let villaId = 0;
+
+const resolveImg = resolveImageUrl;
+
+const topImages = computed(() => (villa.value?.images || []).slice(0, 5));
+
+function previewImage(index: number) {
+  const urls = (villa.value?.images || []).map((img: any) => resolveImg(img.url));
+  if (!urls.length) return;
+  uni.previewImage({
+    urls,
+    current: urls[index],
+  });
+}
 
 onLoad(async (query: any) => {
   villaId = parseInt(query.id);
@@ -236,6 +272,31 @@ function goPlanList() {
 .facility-list { display: flex; flex-wrap: wrap; gap: 16rpx; margin-top: 16rpx; }
 .facility-item { background: #f5f5f5; padding: 10rpx 24rpx; border-radius: 8rpx; font-size: 24rpx; color: #666; }
 .description { font-size: 26rpx; color: #666; line-height: 1.8; display: block; }
+
+.img-count {
+  position: relative; margin: -60rpx 20rpx 10rpx auto;
+  display: inline-block; padding: 8rpx 20rpx;
+  background: rgba(0,0,0,0.6); color: #fff;
+  border-radius: 30rpx; font-size: 22rpx;
+  align-self: flex-end; float: right; z-index: 10;
+}
+
+.gallery { background: #fff; margin: 20rpx; padding: 30rpx 20rpx; border-radius: 16rpx; }
+.gallery-title {
+  display: flex; justify-content: space-between; align-items: baseline;
+  margin-bottom: 24rpx; padding: 0 10rpx;
+}
+.gallery-sub { font-size: 22rpx; color: #999; }
+.gallery-item {
+  margin-bottom: 24rpx; border-radius: 12rpx; overflow: hidden;
+  background: #f5f5f5;
+}
+.gallery-item:last-child { margin-bottom: 0; }
+.gallery-img { width: 100%; display: block; min-height: 200rpx; }
+.gallery-caption {
+  padding: 16rpx 24rpx; background: #fff; border-top: 1rpx solid #f5f5f5;
+}
+.gallery-caption text { font-size: 26rpx; color: #333; line-height: 1.6; }
 
 .scroll-x { white-space: nowrap; }
 .plan-card {

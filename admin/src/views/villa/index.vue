@@ -58,26 +58,39 @@
         <el-form-item label="图片">
           <div class="image-section">
             <div class="image-input">
-              <el-input v-model="newImageUrl" placeholder="输入图片 URL" style="flex: 1">
+              <el-upload
+                :show-file-list="false"
+                :before-upload="handleUpload"
+                multiple
+                accept="image/*"
+              >
+                <el-button type="primary" size="small">📷 上传图片</el-button>
+              </el-upload>
+              <el-input v-model="newImageUrl" placeholder="或输入图片 URL" style="flex: 1; margin-left: 8px;">
                 <template #append>
                   <el-button @click="addImage">添加</el-button>
                 </template>
               </el-input>
             </div>
-            <div class="image-list" v-if="imageUrls.length">
-              <div class="image-item" v-for="(url, index) in imageUrls" :key="index">
-                <el-image :src="url" fit="cover" style="width: 80px; height: 60px; border-radius: 4px;" />
+            <div class="image-list" v-if="imageItems.length">
+              <div class="image-item" v-for="(item, index) in imageItems" :key="index">
+                <el-image :src="resolveUrl(item.url)" fit="cover" style="width: 100px; height: 75px; border-radius: 4px;" />
+                <el-input
+                  v-model="item.caption"
+                  size="small"
+                  placeholder="图片说明（可选，如：客厅 30 平米配投影仪）"
+                  style="flex: 1; margin-left: 8px;"
+                />
                 <el-tag v-if="imageAnalysis[index]" size="small" type="info" style="margin-left: 8px;">
                   {{ imageAnalysis[index]?.categoryName }}
                 </el-tag>
-                <el-tag v-if="imageAnalysis[index]?.isCover" size="small" type="success" style="margin-left: 4px;">
-                  封面
-                </el-tag>
-                <el-button size="small" text type="danger" @click="removeImage(index)" style="margin-left: auto;">删除</el-button>
+                <el-button size="small" text @click="moveUp(index)" :disabled="index === 0" style="margin-left: 4px;">↑</el-button>
+                <el-button size="small" text @click="moveDown(index)" :disabled="index === imageItems.length - 1">↓</el-button>
+                <el-button size="small" text type="danger" @click="removeImage(index)">删除</el-button>
               </div>
             </div>
             <el-button
-              v-if="imageUrls.length > 0"
+              v-if="imageItems.length > 0"
               type="warning"
               size="small"
               :loading="aiLoading"
@@ -179,6 +192,9 @@ import { Link } from '@element-plus/icons-vue';
 import { getVillas, createVilla, updateVilla, updateVillaStatus } from '../../api/villa';
 import { analyzeImages, generateDescription } from '../../api/ai';
 import { importFromUrl } from '../../api/import';
+import { uploadSingle, resolveImageUrl } from '../../api/upload';
+
+interface ImageItem { url: string; caption: string; }
 
 const villaList = ref<any[]>([]);
 const page = ref(1);
@@ -192,11 +208,34 @@ const form = reactive({
   basePrice: 0, weekendPrice: 0, deposit: 0, description: '', tags: '',
 });
 
-const imageUrls = ref<string[]>([]);
+const imageItems = ref<ImageItem[]>([]);
 const imageAnalysis = ref<any[]>([]);
 const newImageUrl = ref('');
 const aiLoading = ref(false);
 const descLoading = ref(false);
+
+const resolveUrl = resolveImageUrl;
+
+async function handleUpload(file: File) {
+  try {
+    const res = await uploadSingle(file);
+    imageItems.value.push({ url: res.url, caption: '' });
+    ElMessage.success('上传成功');
+  } catch (e) {
+    ElMessage.error('上传失败');
+  }
+  return false; // 阻止 el-upload 默认上传
+}
+
+function moveUp(i: number) {
+  if (i === 0) return;
+  [imageItems.value[i - 1], imageItems.value[i]] = [imageItems.value[i], imageItems.value[i - 1]];
+}
+
+function moveDown(i: number) {
+  if (i === imageItems.value.length - 1) return;
+  [imageItems.value[i + 1], imageItems.value[i]] = [imageItems.value[i], imageItems.value[i + 1]];
+}
 
 // 从 URL 导入
 const importVisible = ref(false);
@@ -241,7 +280,7 @@ function handleUseImport() {
   });
 
   // 填入图片
-  imageUrls.value = [...r.images];
+  imageItems.value = r.images.map((url: string) => ({ url, caption: '' }));
   imageAnalysis.value = [];
 
   // 关闭导入弹窗，打开编辑弹窗
@@ -268,7 +307,7 @@ function openDialog() {
     name: '', address: '', maxGuests: 10, bedrooms: 3, area: 200,
     basePrice: 0, weekendPrice: 0, deposit: 0, description: '', tags: '',
   });
-  imageUrls.value = [];
+  imageItems.value = [];
   imageAnalysis.value = [];
   dialogVisible.value = true;
 }
@@ -276,33 +315,38 @@ function openDialog() {
 function handleEdit(row: any) {
   editingId.value = row.id;
   Object.assign(form, row);
-  imageUrls.value = row.images?.map((img: any) => img.url) || [];
+  imageItems.value = row.images?.map((img: any) => ({ url: img.url, caption: img.caption || '' })) || [];
   imageAnalysis.value = [];
   dialogVisible.value = true;
 }
 
 function addImage() {
   if (!newImageUrl.value) return;
-  imageUrls.value.push(newImageUrl.value);
+  imageItems.value.push({ url: newImageUrl.value, caption: '' });
   newImageUrl.value = '';
 }
 
 function removeImage(index: number) {
-  imageUrls.value.splice(index, 1);
+  imageItems.value.splice(index, 1);
   imageAnalysis.value.splice(index, 1);
 }
 
 /** AI 智能排版：分析图片并重新排序 */
 async function handleAiAnalyze() {
-  if (imageUrls.value.length === 0) {
+  if (imageItems.value.length === 0) {
     ElMessage.warning('请先添加图片');
     return;
   }
   aiLoading.value = true;
   try {
-    const result: any = await analyzeImages(imageUrls.value);
-    // 按 AI 建议重新排序
-    imageUrls.value = result.map((r: any) => r.url);
+    const urls = imageItems.value.map((i) => resolveUrl(i.url));
+    const result: any = await analyzeImages(urls);
+    // 按 AI 建议重新排序（保留原 caption）
+    const captionMap = new Map(imageItems.value.map((i) => [resolveUrl(i.url), i.caption]));
+    imageItems.value = result.map((r: any) => ({
+      url: imageItems.value.find((i) => resolveUrl(i.url) === r.url)?.url || r.url,
+      caption: captionMap.get(r.url) || '',
+    }));
     imageAnalysis.value = result;
     ElMessage.success('图片排版完成');
   } catch (e) {
@@ -339,8 +383,8 @@ async function handleAiDescription() {
 async function handleSubmit() {
   const data: any = {
     ...form,
-    images: imageUrls.value,
-    coverImage: imageAnalysis.value.find((a: any) => a.isCover)?.url || imageUrls.value[0] || '',
+    images: imageItems.value,
+    coverImage: imageItems.value[0]?.url || '',
   };
 
   if (editingId.value) {

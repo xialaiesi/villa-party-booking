@@ -105,10 +105,11 @@ model Villa {
 }
 
 model VillaImage {
-  id        BigInt @id @default(autoincrement())
-  villaId   BigInt @map("villa_id")
-  url       String @db.VarChar(500)
-  sortOrder Int    @default(0) @map("sort_order")
+  id        BigInt  @id @default(autoincrement())
+  villaId   BigInt  @map("villa_id")
+  url       String  @db.VarChar(500)
+  caption   String? @db.VarChar(200) // 图片说明（美篇式图文）
+  sortOrder Int     @default(0) @map("sort_order")
 
   villa Villa @relation(fields: [villaId], references: [id], onDelete: Cascade)
 

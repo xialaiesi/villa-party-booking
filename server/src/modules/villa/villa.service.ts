@@ -172,6 +172,7 @@ export class VillaService {
       images: villa.images?.map((img: any) => ({
         id: Number(img.id),
         url: img.url,
+        caption: img.caption,
       })),
     };
   }
