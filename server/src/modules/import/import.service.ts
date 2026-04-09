@@ -120,13 +120,14 @@ export class ImportService {
       );
 
       this.logger.log(`🌐 Puppeteer 加载页面: ${url}`);
-      await page.goto(url, { waitUntil: 'networkidle2', timeout: 30000 });
+      // domcontentloaded 比 networkidle2 快很多
+      await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 20000 });
 
       // 滚动到底部触发懒加载
       await this.autoScroll(page);
 
-      // 再等 2 秒让图片加载
-      await new Promise((r) => setTimeout(r, 2000));
+      // 等 1.5 秒让最后一批图片加载
+      await new Promise((r) => setTimeout(r, 1500));
 
       // 提取数据
       const result = await page.evaluate(() => {
@@ -180,18 +181,16 @@ export class ImportService {
     await page.evaluate(async () => {
       await new Promise<void>((resolve) => {
         let total = 0;
-        const step = 400;
+        const step = 600;
         const timer = setInterval(() => {
           const h = document.body.scrollHeight;
           window.scrollBy(0, step);
           total += step;
           if (total >= h) {
             clearInterval(timer);
-            // 回到顶部触发 intersection observer
-            window.scrollTo(0, 0);
-            setTimeout(resolve, 500);
+            setTimeout(resolve, 300);
           }
-        }, 200);
+        }, 120);
       });
     });
   }

@@ -136,9 +136,13 @@
       <el-alert
         type="info"
         :closable="false"
-        description="支持从简篇、美篇等网页导入：自动抓取标题、图片、并用 AI/规则提取别墅信息"
         style="margin-bottom: 16px;"
-      />
+      >
+        <div>支持从简篇、美篇等网页导入：</div>
+        <div>✅ 启动浏览器模拟滚动，处理懒加载图片</div>
+        <div>✅ 自动下载图片到服务器，解决防盗链</div>
+        <div>⚠️ 首次抓取较慢（20-60 秒），请耐心等待</div>
+      </el-alert>
       <el-form label-width="80px">
         <el-form-item label="页面 URL">
           <el-input
