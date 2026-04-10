@@ -5,6 +5,7 @@ import { imageSize } from 'image-size';
 import puppeteer from 'puppeteer';
 import OpenAI from 'openai';
 import { CosService } from '../../common/cos/cos.service';
+import { AiService } from '../ai/ai.service';
 
 /** 图片过滤阈值 */
 const MIN_IMAGE_WIDTH = 400;
@@ -40,12 +41,151 @@ export class ImportService {
   constructor(
     config: ConfigService,
     private readonly cosService: CosService,
+    private readonly aiService: AiService,
   ) {
     this.client = new OpenAI({
       baseURL: config.get('AI_BASE_URL'),
       apiKey: config.get('AI_API_KEY'),
     });
     this.textModel = config.get('AI_TEXT_MODEL', 'Qwen/Qwen3-8B');
+  }
+
+  /**
+   * 批量上传图片 → AI 分析 → 生成别墅信息
+   * 接收 Multer 文件数组，返回可直接用于创建别墅的完整数据
+   */
+  async importFromImages(files: Express.Multer.File[]) {
+    if (!files?.length) throw new BadRequestException('请上传至少一张图片');
+    if (!this.cosService.isEnabled()) throw new BadRequestException('COS 未配置');
+
+    // 1. 批量上传到 COS
+    this.logger.log(`📦 开始上传 ${files.length} 张图片到 COS...`);
+    const uploadResults = await Promise.all(
+      files.map(async (file) => {
+        try {
+          const url = await this.cosService.uploadFile(file, 'villa');
+          return url;
+        } catch (e: any) {
+          this.logger.warn(`上传失败 ${file.originalname}: ${e.message}`);
+          return null;
+        }
+      }),
+    );
+    const imageUrls = uploadResults.filter((u): u is string => !!u);
+    if (!imageUrls.length) throw new BadRequestException('所有图片上传失败');
+    this.logger.log(`✅ 上传完成: ${imageUrls.length}/${files.length}`);
+
+    // 2. AI 视觉分析：分类、排序、选封面
+    this.logger.log('🔍 AI 分析图片中...');
+    const imageAnalysis = await this.aiService.analyzeImages(imageUrls);
+    const coverImage = imageAnalysis.find((img) => img.isCover)?.url || imageUrls[0];
+
+    // 3. AI 生成别墅信息
+    this.logger.log('✍️ AI 生成别墅信息...');
+    const villaInfo = await this.generateVillaFromImages(imageAnalysis);
+
+    // 4. AI 生成营销描述
+    const description = await this.aiService.generateDescription({
+      name: villaInfo.name || '未命名别墅',
+      maxGuests: villaInfo.maxGuests || 10,
+      bedrooms: villaInfo.bedrooms || 3,
+      area: villaInfo.area,
+      facilities: villaInfo.facilities,
+      imageAnalysis,
+    });
+
+    return {
+      // 图片信息（已排序，含分类和描述）
+      images: imageAnalysis.map((img) => ({
+        url: img.url,
+        category: img.category,
+        categoryName: img.categoryName,
+        caption: img.description,
+        isCover: img.isCover,
+      })),
+      coverImage,
+      // 别墅信息（可直接用于创建）
+      villa: {
+        name: villaInfo.name || '未命名别墅',
+        description,
+        address: villaInfo.address || '',
+        maxGuests: villaInfo.maxGuests || 10,
+        bedrooms: villaInfo.bedrooms || 3,
+        area: villaInfo.area,
+        basePrice: villaInfo.basePrice || 1888,
+        weekendPrice: villaInfo.weekendPrice || 2388,
+        deposit: villaInfo.deposit || 500,
+        tags: villaInfo.tags || '聚会,团建',
+        facilities: villaInfo.facilities || [],
+      },
+      // 统计
+      stats: {
+        uploaded: imageUrls.length,
+        total: files.length,
+        categories: Object.fromEntries(
+          Object.entries(
+            imageAnalysis.reduce((acc, img) => {
+              acc[img.categoryName] = (acc[img.categoryName] || 0) + 1;
+              return acc;
+            }, {} as Record<string, number>),
+          ).sort(([, a], [, b]) => (b as number) - (a as number)),
+        ),
+      },
+    };
+  }
+
+  /**
+   * 根据图片分析结果，用 AI 推断别墅基本信息
+   */
+  private async generateVillaFromImages(
+    imageAnalysis: { category: string; categoryName: string; description: string }[],
+  ) {
+    const imageDesc = imageAnalysis
+      .map((img) => `${img.categoryName}：${img.description}`)
+      .join('\n');
+
+    // 统计房间类型
+    const bedroomCount = imageAnalysis.filter((i) => i.category === 'bedroom').length;
+    const hasPool = imageAnalysis.some((i) => i.category === 'pool');
+    const hasGarden = imageAnalysis.some((i) => i.category === 'garden');
+    const hasEntertainment = imageAnalysis.some((i) => i.category === 'entertainment');
+
+    const prompt = `你是别墅信息估算助手。根据以下别墅图片分析结果，推断别墅的基本信息。
+
+图片分析（共 ${imageAnalysis.length} 张）：
+${imageDesc}
+
+可观察到的特征：
+- 卧室图片数量：${bedroomCount}
+- 有泳池：${hasPool ? '是' : '否'}
+- 有花园：${hasGarden ? '是' : '否'}
+- 有娱乐区：${hasEntertainment ? '是' : '否'}
+
+请根据图片推断以下信息，返回 JSON：
+{
+  "name": "给别墅起一个吸引人的名称（如：湖畔星光别墅），不超过10字",
+  "address": "如果能从图片推断位置则填写，否则留空",
+  "maxGuests": 可住人数（根据卧室数量估算，每间2人），
+  "bedrooms": 卧室数量,
+  "area": 面积（平方米，根据图片规模估算，留空则设null）,
+  "basePrice": 平日参考价（根据装修档次估算，经济型1000-2000，中档2000-4000，豪华4000+）,
+  "weekendPrice": 周末参考价（通常比平日贵20-50%）,
+  "deposit": 押金（通常500-2000）,
+  "tags": "适合场景标签（从 团建,生日,聚会,亲子 中选，逗号分隔）",
+  "facilities": ["从图片中能看到的设施，如 泳池/KTV/烧烤/麻将/投影/厨房/空调/WiFi/花园 等"]
+}
+
+只返回 JSON，不要其他内容。`;
+
+    const response = await this.client.chat.completions.create({
+      model: this.textModel,
+      messages: [{ role: 'user', content: prompt }],
+      max_tokens: 500,
+      temperature: 0.5,
+    });
+
+    const content = response.choices[0]?.message?.content || '';
+    return this.extractJson(content);
   }
 
   /**
