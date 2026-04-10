@@ -39,3 +39,4 @@ web/dist/
 
 # Uploaded files
 server/uploads/
+.vite
