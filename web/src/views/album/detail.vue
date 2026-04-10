@@ -128,8 +128,26 @@ async function handleDelete(photoId: number) {
 
 function copyShareLink() {
   const link = `${window.location.origin}/album/${album.value.id}`;
-  navigator.clipboard.writeText(link);
+  copyText(link);
   ElMessage.success('分享链接已复制，发给朋友即可打开相册');
+}
+
+function copyText(text: string) {
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(text).catch(() => fallbackCopy(text));
+  } else {
+    fallbackCopy(text);
+  }
+}
+function fallbackCopy(text: string) {
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.position = 'fixed';
+  ta.style.opacity = '0';
+  document.body.appendChild(ta);
+  ta.select();
+  document.execCommand('copy');
+  document.body.removeChild(ta);
 }
 
 function formatDate(d: string) {

@@ -178,7 +178,10 @@ async function handleCreateAlbum() {
 
 function copyCode() {
   const link = `${window.location.origin}/album/${album.value.id}`;
-  navigator.clipboard.writeText(link);
+  const ta = document.createElement('textarea');
+  ta.value = link; ta.style.position = 'fixed'; ta.style.opacity = '0';
+  document.body.appendChild(ta); ta.select(); document.execCommand('copy');
+  document.body.removeChild(ta);
   ElMessage.success('分享链接已复制');
 }
 
