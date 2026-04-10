@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const BASE_URL = 'http://localhost:3000';
+const BASE_URL = import.meta.env.VITE_API_BASE ?? 'http://localhost:3000';
 
 export async function uploadSingle(file: File): Promise<{ url: string }> {
   const formData = new FormData();

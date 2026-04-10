@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { ElMessage } from 'element-plus';
 
-export const BASE_URL = 'http://localhost:3000';
+export const BASE_URL = import.meta.env.VITE_API_BASE ?? 'http://localhost:3000';
 
 export function resolveImageUrl(url: string): string {
   if (!url) return '';
