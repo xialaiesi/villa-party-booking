@@ -62,8 +62,35 @@ export class VillaService {
       this.prisma.villa.count({ where }),
     ]);
 
+    // 为每个别墅加上评分统计
+    const villaIds = list.map((v) => Number(v.id));
+    const ratingStats = await this.prisma.review.groupBy({
+      by: ['villaId'],
+      where: { villaId: { in: villaIds } },
+      _avg: { rating: true },
+      _count: { rating: true },
+    });
+    const ratingMap = new Map(ratingStats.map((r: any) => [
+      Number(r.villaId),
+      { avg: Number(r._avg.rating || 0), count: r._count.rating },
+    ]));
+
+    const formatted = list.map((v) => {
+      const stat = ratingMap.get(Number(v.id));
+      return {
+        ...this.formatVilla(v),
+        ratingAvg: stat && stat.count >= 10 ? parseFloat(stat.avg.toFixed(1)) : null,
+        ratingCount: stat?.count || 0,
+      };
+    });
+
+    // 如果按评分排序
+    if (query.sort === 'rating') {
+      formatted.sort((a, b) => (b.ratingAvg || 0) - (a.ratingAvg || 0));
+    }
+
     return {
-      list: list.map((v) => this.formatVilla(v)),
+      list: formatted,
       total,
       page,
       pageSize,
@@ -81,7 +108,16 @@ export class VillaService {
       },
     });
     if (!villa) throw new NotFoundException('别墅不存在');
-    return this.formatVilla(villa);
+    const stats = await this.prisma.review.aggregate({
+      where: { villaId: id },
+      _avg: { rating: true },
+      _count: { rating: true },
+    });
+    return {
+      ...this.formatVilla(villa),
+      ratingAvg: stats._count.rating >= 10 ? parseFloat(Number(stats._avg.rating || 0).toFixed(1)) : null,
+      ratingCount: stats._count.rating,
+    };
   }
 
   async getCalendar(villaId: number, year: number, month: number) {
@@ -151,6 +187,8 @@ export class VillaService {
         rating: r.rating,
         content: r.content,
         images: r.images ? JSON.parse(r.images) : [],
+        reply: r.reply,
+        repliedAt: r.repliedAt,
         createdAt: r.createdAt,
         user: r.user,
       })),

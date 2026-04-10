@@ -97,6 +97,37 @@
       </div>
     </div>
 
+    <!-- 评价区域（已完成订单） -->
+    <div class="card" v-if="order.status === 5">
+      <h3>⭐ 评价</h3>
+      <!-- 已评价 -->
+      <div v-if="reviewData" class="review-done">
+        <div class="review-stars">
+          <span v-for="i in 5" :key="i" :class="i <= reviewData.rating ? 'star-on' : 'star-off'">★</span>
+        </div>
+        <div class="review-content" v-if="reviewData.content">{{ reviewData.content }}</div>
+        <div class="review-time">{{ formatDate(reviewData.createdAt) }}</div>
+        <div class="review-reply" v-if="reviewData.reply">
+          <b>商家回复：</b>{{ reviewData.reply }}
+        </div>
+      </div>
+      <!-- 未评价：评价表单 -->
+      <div v-else class="review-form">
+        <div class="rating-row">
+          <span>评分：</span>
+          <span
+            v-for="i in 5" :key="i"
+            :class="['star-btn', i <= reviewRating ? 'star-on' : 'star-off']"
+            @click="reviewRating = i"
+          >★</span>
+        </div>
+        <el-input v-model="reviewContent" type="textarea" :rows="3" placeholder="说说你的入住体验..." maxlength="500" show-word-limit />
+        <div style="margin-top: 10px; text-align: right;">
+          <el-button type="primary" round :disabled="!reviewRating" @click="submitReview">提交评价</el-button>
+        </div>
+      </div>
+    </div>
+
     <!-- Mock 支付弹窗 -->
     <el-dialog v-model="payDialogVisible" :title="payType === 'deposit' ? '支付定金' : '支付尾款'" width="400px" center>
       <div class="pay-dialog">
@@ -139,6 +170,7 @@ import { useRoute } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { getOrder, cancelOrder, payDeposit, payFinal } from '../../api/order';
 import { createAlbum, getMyAlbums } from '../../api/album';
+import { createReview, checkReview } from '../../api/review';
 
 const route = useRoute();
 const order = ref<any>(null);
@@ -146,6 +178,9 @@ const album = ref<any>(null);
 const payDialogVisible = ref(false);
 const paySuccessVisible = ref(false);
 const payType = ref<'deposit' | 'final'>('deposit');
+const reviewData = ref<any>(null);
+const reviewRating = ref(0);
+const reviewContent = ref('');
 
 const finalAmount = computed(() => {
   if (!order.value) return 0;
@@ -163,6 +198,13 @@ async function load() {
       const albums: any = await getMyAlbums();
       album.value = albums?.find((a: any) => a.orderId === order.value.id) || null;
     } catch { /* not logged in or no albums */ }
+  }
+  // 检查是否已评价
+  if (order.value.status === 5) {
+    try {
+      const res: any = await checkReview(order.value.id);
+      reviewData.value = res.review;
+    } catch { /* ignore */ }
   }
 }
 
@@ -215,6 +257,19 @@ async function handleCancel() {
   await cancelOrder(order.value.id);
   ElMessage.success('已取消');
   load();
+}
+
+async function submitReview() {
+  try {
+    reviewData.value = await createReview({
+      orderId: order.value.id,
+      rating: reviewRating.value,
+      content: reviewContent.value,
+    });
+    ElMessage.success('评价成功，感谢您的反馈！');
+  } catch (e: any) {
+    ElMessage.error(e.message || '评价失败');
+  }
 }
 
 function formatDate(d: string) { return new Date(d).toLocaleString(); }
@@ -291,6 +346,25 @@ function statusDesc(s: number) {
 .success-icon { font-size: 48px; }
 .pay-success h3 { font-size: 18px; color: #1e293b; margin: 12px 0 8px; }
 .pay-success p { font-size: 14px; color: #94a3b8; }
+
+/* 评价 */
+.review-form { }
+.rating-row { display: flex; align-items: center; gap: 4px; margin-bottom: 12px; font-size: 14px; color: #64748b; }
+.star-btn { font-size: 28px; cursor: pointer; transition: color 0.15s; }
+.star-on { color: #fbbf24; }
+.star-off { color: #e2e8f0; }
+.review-done { }
+.review-stars { font-size: 22px; margin-bottom: 8px; }
+.review-stars .star-on { color: #fbbf24; }
+.review-stars .star-off { color: #e2e8f0; }
+.review-content { font-size: 14px; color: #475569; line-height: 1.7; margin-bottom: 6px; }
+.review-time { font-size: 12px; color: #94a3b8; }
+.review-reply {
+  margin-top: 12px; padding: 12px; background: #f8fafc; border-radius: 8px;
+  font-size: 13px; color: #64748b; line-height: 1.6;
+  border-left: 3px solid #3b82f6;
+}
+.review-reply b { color: #3b82f6; }
 
 /* 相册卡片 */
 .album-card {

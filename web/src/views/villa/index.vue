@@ -40,8 +40,12 @@
         <div class="card">
           <div class="title-row">
             <h1>{{ villa.name }}</h1>
-            <div class="rating" v-if="reviewStats.avgRating !== '0.0'">
-              ⭐ {{ reviewStats.avgRating }} ({{ reviewStats.total }}条评价)
+            <div class="rating-badge" v-if="villa.ratingAvg">
+              <span class="rating-score">{{ villa.ratingAvg }}</span>
+              <span class="rating-label">{{ villa.ratingCount }}条评价</span>
+            </div>
+            <div class="rating-badge no-rating" v-else>
+              <span class="rating-label">暂无评分（{{ villa.ratingCount || 0 }}条）</span>
             </div>
           </div>
           <div class="merchant-row" v-if="villa.merchant">
@@ -106,6 +110,9 @@
                 </div>
                 <div class="review-content">{{ r.content }}</div>
                 <div class="review-date">{{ formatDate(r.createdAt) }}</div>
+                <div class="review-reply-box" v-if="r.reply">
+                  <b>商家回复：</b>{{ r.reply }}
+                </div>
               </div>
             </div>
           </div>
@@ -282,7 +289,15 @@ function formatDate(d: string) {
 
 .title-row { display: flex; justify-content: space-between; align-items: flex-start; }
 .title-row h1 { font-size: 28px; color: #1e293b; font-weight: 800; }
-.rating { font-size: 14px; color: #e6a23c; font-weight: 500; }
+.rating-badge {
+  display: flex; flex-direction: column; align-items: center;
+  padding: 8px 16px; border-radius: 10px;
+  background: linear-gradient(135deg, #fef3c7, #fde68a);
+}
+.rating-badge.no-rating { background: #f1f5f9; }
+.rating-score { font-size: 24px; font-weight: 800; color: #d97706; line-height: 1; }
+.rating-label { font-size: 11px; color: #92400e; margin-top: 2px; }
+.no-rating .rating-label { color: #94a3b8; }
 .merchant-row { display: flex; gap: 8px; margin: 12px 0; }
 .badge {
   display: inline-block; padding: 4px 12px; border-radius: 16px;
@@ -332,6 +347,11 @@ function formatDate(d: string) {
 .review-stars .star-e { color: #ddd; }
 .review-content { font-size: 14px; color: #666; margin: 8px 0; line-height: 1.6; }
 .review-date { font-size: 12px; color: #999; }
+.review-reply-box {
+  margin-top: 10px; padding: 10px 14px; background: #f8fafc; border-radius: 8px;
+  font-size: 13px; color: #64748b; line-height: 1.6; border-left: 3px solid #3b82f6;
+}
+.review-reply-box b { color: #3b82f6; }
 
 .side-col { position: sticky; top: 100px; align-self: start; }
 .booking-card {

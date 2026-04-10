@@ -287,14 +287,17 @@ model Payment {
 // ==================== 评价相关 ====================
 
 model Review {
-  id        BigInt   @id @default(autoincrement())
-  orderId   BigInt   @map("order_id")
-  userId    BigInt   @map("user_id")
-  villaId   BigInt   @map("villa_id")
-  rating    Int      @db.TinyInt
-  content   String?  @db.Text
-  images    String?  @db.Text
-  createdAt DateTime @default(now()) @map("created_at")
+  id         BigInt    @id @default(autoincrement())
+  orderId    BigInt    @map("order_id")
+  userId     BigInt    @map("user_id")
+  villaId    BigInt    @map("villa_id")
+  rating     Int       @db.TinyInt       // 1-5 星
+  content    String?   @db.Text
+  images     String?   @db.Text          // JSON 图片数组
+  reply      String?   @db.Text          // 商家回复
+  repliedAt  DateTime? @map("replied_at")
+  updatedAt  DateTime? @updatedAt @map("updated_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
 
   order Order @relation(fields: [orderId], references: [id])
   user  User  @relation(fields: [userId], references: [id])
