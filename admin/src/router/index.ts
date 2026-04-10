@@ -12,6 +12,7 @@ const routes = [
     redirect: '/dashboard',
     children: [
       { path: 'dashboard', component: () => import('../views/dashboard/index.vue'), meta: { title: '数据看板' } },
+      { path: 'site-config', component: () => import('../views/site-config/index.vue'), meta: { title: '站点配置' } },
       { path: 'villa', component: () => import('../views/villa/index.vue'), meta: { title: '房源管理' } },
       { path: 'calendar', component: () => import('../views/calendar/index.vue'), meta: { title: '房态管理' } },
       { path: 'package', component: () => import('../views/package/index.vue'), meta: { title: '套餐管理' } },

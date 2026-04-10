@@ -43,12 +43,18 @@
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="200" align="center">
+      <el-table-column label="操作" width="180" align="center">
         <template #default="{ row }">
-          <el-button size="small" @click="handleEdit(row)">编辑</el-button>
-          <el-button size="small" :type="row.status === 1 ? 'warning' : 'success'" @click="toggleStatus(row)">
-            {{ row.status === 1 ? '下架' : '上架' }}
-          </el-button>
+          <div class="action-btns">
+            <span class="action-link primary" @click="handleEdit(row)">编辑</span>
+            <span class="action-divider">|</span>
+            <span
+              :class="['action-link', row.status === 1 ? 'danger' : 'success']"
+              @click="toggleStatus(row)"
+            >
+              {{ row.status === 1 ? '下架' : '上架' }}
+            </span>
+          </div>
         </template>
       </el-table-column>
     </el-table>
@@ -589,52 +595,7 @@ async function toggleStatus(row: any) {
 </script>
 
 <style scoped>
-.toolbar {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  margin-bottom: 20px;
-}
-.import-group {
-  display: flex;
-  gap: 12px;
-}
-.import-card {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 18px;
-  border-radius: 10px;
-  border: 1px solid #ebeef5;
-  cursor: pointer;
-  transition: all 0.25s;
-  background: #fff;
-}
-.import-card:hover {
-  border-color: #c6d4ff;
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
-  transform: translateY(-1px);
-}
-.import-card-icon {
-  width: 40px;
-  height: 40px;
-  border-radius: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #fff;
-  flex-shrink: 0;
-}
-.import-card-title {
-  font-size: 14px;
-  font-weight: 600;
-  color: #303133;
-}
-.import-card-desc {
-  font-size: 12px;
-  color: #909399;
-  margin-top: 2px;
-}
+.toolbar { display: flex; align-items: center; gap: 16px; margin-bottom: 20px; }
 
 /* 智能导入弹窗 */
 .smart-import-sections { }
@@ -735,5 +696,6 @@ async function toggleStatus(row: any) {
 .preview-item { margin-bottom: 16px; font-size: 14px; }
 .struct-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
 .struct-grid span { background: #f0f9ff; color: #1890ff; padding: 4px 12px; border-radius: 12px; font-size: 12px; }
-.preview-imgs { display: flex; flex-wrap: wrap; margin-top: 8px; align-items: center; }
+.import-preview { max-height: 400px; overflow-y: auto; }
+.preview-item { margin-bottom: 16px; font-size: 14px; }
 </style>

@@ -33,6 +33,7 @@ import { HomeModule } from './modules/home/home.module';
 import { MessageModule } from './modules/message/message.module';
 import { ImportModule } from './modules/import/import.module';
 import { UploadModule } from './modules/upload/upload.module';
+import { SiteConfigModule } from './modules/site-config/site-config.module';
 
 @Module({
   imports: [
@@ -68,6 +69,7 @@ import { UploadModule } from './modules/upload/upload.module';
     MessageModule,
     ImportModule,
     UploadModule,
+    SiteConfigModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: AllExceptionsFilter },

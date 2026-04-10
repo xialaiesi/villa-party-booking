@@ -41,6 +41,7 @@ model Merchant {
   seasonalEvents SeasonalEvent[]
   orders         Order[]
   settlements    Settlement[]
+  siteConfigs    SiteConfig[]
 
   @@map("merchant")
 }
@@ -696,4 +697,19 @@ model Admin {
 
   @@index([merchantId])
   @@map("admin")
+}
+
+// ==================== 站点配置 ====================
+
+model SiteConfig {
+  id         BigInt   @id @default(autoincrement())
+  merchantId BigInt   @map("merchant_id")
+  configKey  String   @map("config_key") @db.VarChar(50)   // hero_title / hero_subtitle / hero_bg / banners / scene_tags ...
+  configVal  String   @map("config_val") @db.Text           // JSON or plain text
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  merchant Merchant @relation(fields: [merchantId], references: [id])
+
+  @@unique([merchantId, configKey])
+  @@map("site_config")
 }

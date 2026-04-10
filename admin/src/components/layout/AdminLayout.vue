@@ -17,6 +17,10 @@
           <span>商家管理</span>
         </el-menu-item>
 
+        <el-menu-item index="/site-config">
+          <el-icon><Brush /></el-icon>
+          <span>站点配置</span>
+        </el-menu-item>
         <el-menu-item index="/villa">
           <el-icon><House /></el-icon>
           <span>房源管理</span>
@@ -81,7 +85,7 @@ import { computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import {
   DataAnalysis, House, Calendar, ShoppingBag, Document, Setting,
-  List, Present, Service, Star, OfficeBuilding, Money,
+  List, Present, Service, Star, OfficeBuilding, Money, Brush,
 } from '@element-plus/icons-vue';
 import { useUserStore } from '../../store/user';
 
