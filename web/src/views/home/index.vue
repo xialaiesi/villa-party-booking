@@ -26,19 +26,22 @@
     </div>
 
     <!-- 自定义轮播图 -->
-    <div class="container section" v-if="customBanners.length">
-      <el-carousel height="320px" :interval="5000" arrow="hover" indicator-position="outside">
-        <el-carousel-item v-for="(b, i) in customBanners" :key="i">
-          <div class="carousel-item" @click="handleBannerClick(b)">
-            <img :src="b.image" />
-            <div class="carousel-title" v-if="b.title">{{ b.title }}</div>
-          </div>
-        </el-carousel-item>
-      </el-carousel>
+    <div class="carousel-section" v-if="customBanners.length">
+      <div class="container">
+        <el-carousel height="380px" :interval="5000" arrow="hover" indicator-position="outside">
+          <el-carousel-item v-for="(b, i) in customBanners" :key="i">
+            <div class="carousel-item" @click="handleBannerClick(b)">
+              <img :src="b.image" />
+              <div class="carousel-title" v-if="b.title">{{ b.title }}</div>
+            </div>
+          </el-carousel-item>
+        </el-carousel>
+      </div>
     </div>
 
     <!-- 限定活动 Banner -->
-    <div class="container section" v-if="banners.length">
+    <div class="section-wrap warm" v-if="banners.length">
+    <div class="container section">
       <div class="section-header">
         <h2>🎉 限时活动</h2>
       </div>
@@ -53,7 +56,10 @@
       </div>
     </div>
 
+    </div>
+
     <!-- 推荐别墅 -->
+    <div class="section-wrap">
     <div class="container section">
       <div class="section-header">
         <h2>🏡 精选别墅</h2>
@@ -84,8 +90,11 @@
       <el-skeleton v-else :rows="5" animated />
     </div>
 
+    </div>
+
     <!-- 正在拼团 -->
-    <div class="container section" v-if="groupBuys.length">
+    <div class="section-wrap cool" v-if="groupBuys.length">
+    <div class="container section">
       <div class="section-header">
         <h2>🔥 正在拼团</h2>
       </div>
@@ -99,6 +108,8 @@
           </div>
         </div>
       </div>
+    </div>
+
     </div>
 
     <!-- 页脚 -->
@@ -183,51 +194,87 @@ function handleBannerClick(b: any) { if (b.link) window.open(b.link, '_blank'); 
 </script>
 
 <style scoped>
+/* ===== Hero ===== */
 .hero {
   background: linear-gradient(135deg, #ff6b35, #ff8f65);
-  padding: 80px 0;
+  padding: 90px 0 80px;
   color: #fff;
+  position: relative;
+}
+.hero::after {
+  content: '';
+  position: absolute; bottom: 0; left: 0; right: 0; height: 60px;
+  background: linear-gradient(transparent, #faf9f7);
+  pointer-events: none;
 }
 .hero-title {
-  font-size: 44px; font-weight: bold; text-align: center;
-  margin-bottom: 16px; text-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  font-size: 46px; font-weight: 800; text-align: center;
+  margin-bottom: 16px; text-shadow: 0 2px 12px rgba(0,0,0,0.2);
+  letter-spacing: 2px;
 }
 .hero-subtitle {
   font-size: 20px; text-align: center; opacity: 0.9;
-  margin-bottom: 40px;
+  margin-bottom: 40px; letter-spacing: 4px;
 }
 .search-box { display: flex; gap: 12px; max-width: 700px; margin: 0 auto; }
 .search-input { background: #fff; border-radius: 8px; }
 .scene-tags {
   display: flex; justify-content: center; gap: 12px;
-  margin-top: 24px; flex-wrap: wrap;
+  margin-top: 28px; flex-wrap: wrap;
 }
 .scene-tags .tag {
-  background: rgba(255, 255, 255, 0.2); color: #fff;
-  padding: 8px 20px; border-radius: 24px; font-size: 14px;
-  cursor: pointer; transition: all 0.2s;
-  backdrop-filter: blur(4px);
+  background: rgba(255, 255, 255, 0.18); color: #fff;
+  padding: 8px 22px; border-radius: 24px; font-size: 14px;
+  cursor: pointer; transition: all 0.25s;
+  backdrop-filter: blur(6px);
+  border: 1px solid rgba(255,255,255,0.2);
 }
-.scene-tags .tag:hover { background: #fff; color: #ff6b35; }
+.scene-tags .tag:hover { background: #fff; color: #ff6b35; border-color: #fff; }
 
-/* 轮播图 */
+/* ===== 轮播图 ===== */
+.carousel-section {
+  background: #faf9f7;
+  padding: 48px 0 0;
+  margin-top: -30px;
+  position: relative;
+  z-index: 1;
+}
 .carousel-item {
-  position: relative; height: 100%; cursor: pointer; border-radius: 12px; overflow: hidden;
+  position: relative; height: 100%; cursor: pointer; border-radius: 16px; overflow: hidden;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.12);
 }
 .carousel-item img { width: 100%; height: 100%; object-fit: cover; }
 .carousel-title {
   position: absolute; bottom: 0; left: 0; right: 0;
-  padding: 16px 24px; color: #fff; font-size: 18px; font-weight: 600;
-  background: linear-gradient(transparent, rgba(0,0,0,0.6));
+  padding: 20px 28px; color: #fff; font-size: 20px; font-weight: 600;
+  background: linear-gradient(transparent, rgba(0,0,0,0.65));
+  letter-spacing: 1px;
 }
 
-.section { margin: 60px auto; }
+/* ===== Section 通用 ===== */
+.section-wrap {
+  padding: 20px 0;
+}
+.section-wrap.warm {
+  background: linear-gradient(180deg, #faf9f7, #fff5f0, #faf9f7);
+}
+.section-wrap.cool {
+  background: linear-gradient(180deg, #faf9f7, #f0f7ff, #faf9f7);
+}
+.section { margin: 40px auto; }
 .section-header {
   display: flex; justify-content: space-between; align-items: center;
   margin-bottom: 30px;
 }
-.section-header h2 { font-size: 26px; color: #333; }
-.more-link { color: #ff6b35; font-size: 14px; }
+.section-header h2 {
+  font-size: 26px; color: #1e293b; font-weight: 700;
+  position: relative; padding-left: 0;
+}
+.more-link {
+  color: #ff6b35; font-size: 14px; font-weight: 500;
+  transition: opacity 0.2s;
+}
+.more-link:hover { opacity: 0.7; }
 
 .banner-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
 .banner-card {
@@ -246,13 +293,13 @@ function handleBannerClick(b: any) { if (b.link) window.open(b.link, '_blank'); 
 
 .villa-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
 .villa-card {
-  background: #fff; border-radius: 12px; overflow: hidden;
-  cursor: pointer; transition: all 0.2s;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  background: #fff; border-radius: 14px; overflow: hidden;
+  cursor: pointer; transition: all 0.3s;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
 }
 .villa-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+  transform: translateY(-6px);
+  box-shadow: 0 12px 32px rgba(0,0,0,0.12);
 }
 .villa-img-wrap { position: relative; height: 240px; }
 .villa-img-wrap img { width: 100%; height: 100%; object-fit: cover; }
@@ -292,7 +339,8 @@ function handleBannerClick(b: any) { if (b.link) window.open(b.link, '_blank'); 
 .group-progress { font-size: 12px; color: #999; margin-top: 4px; }
 
 .footer {
-  text-align: center; padding: 32px 0; color: #999; font-size: 13px;
-  border-top: 1px solid #f0f0f0; margin-top: 60px;
+  text-align: center; padding: 40px 0; color: #94a3b8; font-size: 13px;
+  background: #1e293b; margin-top: 0;
+  letter-spacing: 1px;
 }
 </style>
