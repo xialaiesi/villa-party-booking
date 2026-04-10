@@ -189,6 +189,86 @@ ${imageDesc}
   }
 
   /**
+   * 从文案文本中提取别墅结构化信息
+   */
+  async importFromText(text: string) {
+    if (!text?.trim()) throw new BadRequestException('请输入文案内容');
+    const trimmed = text.trim().slice(0, 5000);
+
+    this.logger.log(`📝 开始解析文案（${trimmed.length} 字）...`);
+
+    const prompt = `你是别墅房源信息提取专家。请从以下别墅推荐/介绍文案中，精确提取所有信息，返回 JSON 格式。
+
+文案内容：
+${trimmed}
+
+请提取以下字段，返回 JSON：
+{
+  "name": "别墅名称（简洁，不超过15字）",
+  "address": "详细地址（包含城市/区/路）",
+  "maxGuests": 最大可住人数（数字）,
+  "bedrooms": 房间/客房数量（数字）,
+  "beds": 总床位数（数字，如果提到的话）,
+  "area": 总面积（平方米，数字）,
+  "floors": 楼层数（数字，如果提到的话）,
+  "basePrice": 平日价格（数字，如未提到则根据档次估算：经济型1000-2000，中档2000-4000，豪华4000+），
+  "weekendPrice": 周末价格（数字，通常比平日贵20-50%），
+  "deposit": 押金（数字，通常500-2000），
+  "tags": "适合场景标签（从 团建/生日/聚会/亲子/公司活动 中选，逗号分隔）",
+  "facilities": ["从文案中提到的所有设施，如 KTV/麻将/泳池/烧烤/桌球/投影/厨房/空调/WiFi/花园/露营/游戏机/桌游 等"],
+  "description": "用150-250字重写一段营销描述，突出卖点，适合小程序展示，语言生动有画面感",
+  "floorPlan": "每层功能简述（如有楼层介绍的话）",
+  "transportation": "交通信息简述（如有的话）",
+  "highlights": ["3-5个核心卖点短语，每个不超过10字"]
+}
+
+要求：
+1. 尽可能从原文提取准确数据，不要凭空捏造
+2. 未提到的字段设为 null
+3. facilities 要尽可能完整列出文案中提到的所有设施
+4. description 要重新组织语言，比原文更吸引人
+5. 只返回 JSON，不要其他内容`;
+
+    const response = await this.client.chat.completions.create({
+      model: this.textModel,
+      messages: [{ role: 'user', content: prompt }],
+      max_tokens: 1200,
+      temperature: 0.3,
+    });
+
+    const content = response.choices[0]?.message?.content || '';
+    if (!content) throw new BadRequestException('AI 返回空内容');
+
+    const parsed = this.extractJson(content);
+    if (!parsed || !Object.keys(parsed).length) {
+      throw new BadRequestException('无法从文案中提取信息');
+    }
+
+    return {
+      villa: {
+        name: parsed.name || '未命名别墅',
+        description: parsed.description || '',
+        address: parsed.address || '',
+        maxGuests: parsed.maxGuests || 10,
+        bedrooms: parsed.bedrooms || 3,
+        area: parsed.area || null,
+        basePrice: parsed.basePrice || 1888,
+        weekendPrice: parsed.weekendPrice || 2388,
+        deposit: parsed.deposit || 500,
+        tags: parsed.tags || '团建,聚会',
+        facilities: parsed.facilities || [],
+      },
+      extra: {
+        beds: parsed.beds,
+        floors: parsed.floors,
+        floorPlan: parsed.floorPlan,
+        transportation: parsed.transportation,
+        highlights: parsed.highlights || [],
+      },
+    };
+  }
+
+  /**
    * 从 URL 抓取页面内容并解析
    * 支持：简篇(jianpian.cn)、美篇、普通网页
    */

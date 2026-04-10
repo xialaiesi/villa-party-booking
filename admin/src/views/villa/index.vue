@@ -10,6 +10,10 @@
         <el-icon style="margin-right: 4px;"><Picture /></el-icon>
         图片导入
       </el-button>
+      <el-button @click="textImportVisible = true">
+        <el-icon style="margin-right: 4px;"><Document /></el-icon>
+        文案导入
+      </el-button>
     </div>
     <el-table :data="villaList" border stripe>
       <el-table-column prop="id" label="ID" width="80" />
@@ -142,6 +146,64 @@
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
         <el-button type="primary" @click="handleSubmit">确定</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 文案导入 -->
+    <el-dialog
+      v-model="textImportVisible"
+      title="文案导入 — 粘贴文字自动提取"
+      width="650px"
+      :close-on-click-modal="false"
+      @close="handleTextImportClose"
+    >
+      <el-alert type="info" :closable="false" style="margin-bottom: 16px;">
+        <div>粘贴别墅推荐文案（小红书/公众号/朋友圈等），AI 自动提取：</div>
+        <div>✅ 名称、地址、面积、房间数、容纳人数</div>
+        <div>✅ 设施列表（KTV/泳池/烧烤/麻将等）</div>
+        <div>✅ 价格估算 + 营销描述重写</div>
+      </el-alert>
+
+      <el-input
+        v-model="textImportContent"
+        type="textarea"
+        :rows="10"
+        placeholder="粘贴别墅介绍文案到这里..."
+        maxlength="5000"
+        show-word-limit
+      />
+
+      <!-- 结果预览 -->
+      <div v-if="textImportResult" class="import-preview" style="margin-top: 16px;">
+        <el-divider>提取结果</el-divider>
+        <div class="struct-grid" style="margin-bottom: 12px;">
+          <span>{{ textImportResult.villa.name }}</span>
+          <span>{{ textImportResult.villa.maxGuests }}人</span>
+          <span>{{ textImportResult.villa.bedrooms }}间房</span>
+          <span v-if="textImportResult.villa.area">{{ textImportResult.villa.area }}㎡</span>
+          <span>¥{{ textImportResult.villa.basePrice }}/晚</span>
+        </div>
+        <div v-if="textImportResult.villa.facilities?.length" style="margin-bottom: 12px;">
+          <strong>设施：</strong>
+          <el-tag v-for="f in textImportResult.villa.facilities" :key="f" size="small" style="margin: 2px;">{{ f }}</el-tag>
+        </div>
+        <div v-if="textImportResult.extra?.highlights?.length" style="margin-bottom: 12px;">
+          <strong>卖点：</strong>
+          <el-tag v-for="h in textImportResult.extra.highlights" :key="h" type="warning" size="small" style="margin: 2px;">{{ h }}</el-tag>
+        </div>
+        <div v-if="textImportResult.villa.description" style="font-size: 13px; color: #666; line-height: 1.8;">
+          <strong>描述：</strong>{{ textImportResult.villa.description }}
+        </div>
+      </div>
+
+      <template #footer>
+        <el-button @click="textImportVisible = false">取消</el-button>
+        <el-button type="primary" :loading="textImportLoading" :disabled="!textImportContent.trim()" @click="handleTextImportParse">
+          {{ textImportResult ? '重新解析' : 'AI 解析' }}
+        </el-button>
+        <el-button type="success" v-if="textImportResult" @click="handleUseTextImport">
+          使用这些数据创建
+        </el-button>
       </template>
     </el-dialog>
 
@@ -284,10 +346,10 @@
 <script setup lang="ts">
 import { ref, onMounted, reactive } from 'vue';
 import { ElMessage } from 'element-plus';
-import { Link, Picture, Plus } from '@element-plus/icons-vue';
+import { Link, Picture, Plus, Document } from '@element-plus/icons-vue';
 import { getVillas, createVilla, updateVilla, updateVillaStatus } from '../../api/villa';
 import { analyzeImages, generateDescription } from '../../api/ai';
-import { importFromUrl, importFromImages } from '../../api/import';
+import { importFromUrl, importFromImages, importFromText } from '../../api/import';
 import { uploadSingle, resolveImageUrl } from '../../api/upload';
 import { getMerchants } from '../../api/merchant';
 import { useUserStore } from '../../store/user';
@@ -337,6 +399,65 @@ function moveUp(i: number) {
 function moveDown(i: number) {
   if (i === imageItems.value.length - 1) return;
   [imageItems.value[i + 1], imageItems.value[i]] = [imageItems.value[i], imageItems.value[i + 1]];
+}
+
+// 文案导入
+const textImportVisible = ref(false);
+const textImportContent = ref('');
+const textImportLoading = ref(false);
+const textImportResult = ref<any>(null);
+
+function handleTextImportClose() {
+  textImportContent.value = '';
+  textImportResult.value = null;
+}
+
+async function handleTextImportParse() {
+  if (!textImportContent.value.trim()) {
+    ElMessage.warning('请输入文案内容');
+    return;
+  }
+  textImportLoading.value = true;
+  textImportResult.value = null;
+  try {
+    textImportResult.value = await importFromText(textImportContent.value);
+    ElMessage.success('解析完成');
+  } catch (e: any) {
+    ElMessage.error(e.message || '解析失败');
+  } finally {
+    textImportLoading.value = false;
+  }
+}
+
+function handleUseTextImport() {
+  const r = textImportResult.value;
+  if (!r) return;
+  const v = r.villa;
+
+  Object.assign(form, {
+    name: v.name || '',
+    address: v.address || '',
+    maxGuests: v.maxGuests || 10,
+    bedrooms: v.bedrooms || 3,
+    area: v.area || 200,
+    basePrice: v.basePrice || 0,
+    weekendPrice: v.weekendPrice || 0,
+    deposit: v.deposit || 500,
+    description: v.description || '',
+    tags: v.tags || '团建,聚会',
+    merchantId: form.merchantId || merchantOptions.value[0]?.id || null,
+  });
+
+  imageItems.value = [];
+  imageAnalysis.value = [];
+
+  textImportVisible.value = false;
+  editingId.value = null;
+  dialogVisible.value = true;
+  textImportContent.value = '';
+  textImportResult.value = null;
+
+  ElMessage.info('已填入数据，请上传图片后保存');
 }
 
 // 图片导入

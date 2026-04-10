@@ -21,6 +21,12 @@ const fileFilter = (_req: any, file: any, cb: any) => {
 export class ImportController {
   constructor(private service: ImportService) {}
 
+  /** 从文案文本导入别墅信息 */
+  @Post('text')
+  async importFromText(@Body('text') text: string) {
+    return this.service.importFromText(text);
+  }
+
   /** 从 URL 导入别墅信息 */
   @Post('url')
   async importFromUrl(

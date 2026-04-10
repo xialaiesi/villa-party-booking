@@ -8,6 +8,11 @@ export function importFromUrl(url: string, useAi = true) {
   return request.post('/api/admin/import/url', { url, useAi }, { timeout: 120000 });
 }
 
+/** 从文案文本提取别墅信息 */
+export function importFromText(text: string) {
+  return request.post('/api/admin/import/text', { text }, { timeout: 60000 });
+}
+
 /** 批量上传图片 → AI 分析 → 生成别墅信息 */
 export async function importFromImages(files: File[]) {
   const formData = new FormData();
