@@ -6,6 +6,10 @@
         <el-icon style="margin-right: 4px;"><Link /></el-icon>
         从 URL 导入
       </el-button>
+      <el-button type="warning" @click="imageImportVisible = true">
+        <el-icon style="margin-right: 4px;"><Picture /></el-icon>
+        图片导入
+      </el-button>
     </div>
     <el-table :data="villaList" border stripe>
       <el-table-column prop="id" label="ID" width="80" />
@@ -141,6 +145,73 @@
       </template>
     </el-dialog>
 
+    <!-- 图片导入 -->
+    <el-dialog
+      v-model="imageImportVisible"
+      title="图片导入 — 批量上传生成别墅"
+      width="650px"
+      :close-on-click-modal="false"
+      @close="handleImageImportClose"
+    >
+      <el-alert type="info" :closable="false" style="margin-bottom: 16px;">
+        <div>选择别墅的多张图片（客厅、卧室、泳池等），AI 自动：</div>
+        <div>✅ 识别图片类型并排序（外观→泳池→客厅→卧室…）</div>
+        <div>✅ 选择最佳封面图</div>
+        <div>✅ 推断别墅名称、价格、容纳人数等信息</div>
+        <div>✅ 生成营销描述文案</div>
+      </el-alert>
+
+      <el-upload
+        ref="imageImportUploadRef"
+        :auto-upload="false"
+        multiple
+        accept="image/*"
+        :limit="30"
+        list-type="picture-card"
+        v-model:file-list="imageImportFiles"
+      >
+        <el-icon><Plus /></el-icon>
+        <template #tip>
+          <div class="el-upload__tip">支持 jpg/png/webp，最多 30 张，每张 ≤ 10MB</div>
+        </template>
+      </el-upload>
+
+      <!-- 结果预览 -->
+      <div v-if="imageImportResult" class="import-preview" style="margin-top: 16px;">
+        <el-divider>AI 分析结果</el-divider>
+        <div class="struct-grid" style="margin-bottom: 12px;">
+          <span>名称：{{ imageImportResult.villa.name }}</span>
+          <span>人数：{{ imageImportResult.villa.maxGuests }}人</span>
+          <span>卧室：{{ imageImportResult.villa.bedrooms }}间</span>
+          <span>平日价：¥{{ imageImportResult.villa.basePrice }}</span>
+          <span>周末价：¥{{ imageImportResult.villa.weekendPrice }}</span>
+          <span v-for="(v, k) in imageImportResult.stats.categories" :key="k">{{ k }}：{{ v }}张</span>
+        </div>
+        <div class="preview-imgs">
+          <div v-for="(img, i) in imageImportResult.images.slice(0, 8)" :key="i" style="position: relative; display: inline-block;">
+            <el-image :src="img.url" fit="cover" style="width: 80px; height: 60px; margin: 4px; border-radius: 4px;" />
+            <el-tag v-if="img.isCover" type="danger" size="small" style="position: absolute; top: 0; left: 4px; font-size: 10px;">封面</el-tag>
+          </div>
+          <span v-if="imageImportResult.images.length > 8">...+{{ imageImportResult.images.length - 8 }}</span>
+        </div>
+      </div>
+
+      <template #footer>
+        <el-button @click="imageImportVisible = false">取消</el-button>
+        <el-button
+          type="primary"
+          :loading="imageImportLoading"
+          :disabled="!imageImportFiles.length"
+          @click="handleImageImport"
+        >
+          {{ imageImportResult ? '重新分析' : '上传并分析' }}
+        </el-button>
+        <el-button type="success" v-if="imageImportResult" @click="handleUseImageImport">
+          使用这些数据创建
+        </el-button>
+      </template>
+    </el-dialog>
+
     <!-- 从 URL 导入 -->
     <el-dialog
       v-model="importVisible"
@@ -213,10 +284,10 @@
 <script setup lang="ts">
 import { ref, onMounted, reactive } from 'vue';
 import { ElMessage } from 'element-plus';
-import { Link } from '@element-plus/icons-vue';
+import { Link, Picture, Plus } from '@element-plus/icons-vue';
 import { getVillas, createVilla, updateVilla, updateVillaStatus } from '../../api/villa';
 import { analyzeImages, generateDescription } from '../../api/ai';
-import { importFromUrl } from '../../api/import';
+import { importFromUrl, importFromImages } from '../../api/import';
 import { uploadSingle, resolveImageUrl } from '../../api/upload';
 import { getMerchants } from '../../api/merchant';
 import { useUserStore } from '../../store/user';
@@ -266,6 +337,70 @@ function moveUp(i: number) {
 function moveDown(i: number) {
   if (i === imageItems.value.length - 1) return;
   [imageItems.value[i + 1], imageItems.value[i]] = [imageItems.value[i], imageItems.value[i + 1]];
+}
+
+// 图片导入
+const imageImportVisible = ref(false);
+const imageImportFiles = ref<any[]>([]);
+const imageImportLoading = ref(false);
+const imageImportResult = ref<any>(null);
+
+function handleImageImportClose() {
+  imageImportFiles.value = [];
+  imageImportResult.value = null;
+}
+
+async function handleImageImport() {
+  if (!imageImportFiles.value.length) {
+    ElMessage.warning('请先选择图片');
+    return;
+  }
+  imageImportLoading.value = true;
+  imageImportResult.value = null;
+  try {
+    const files = imageImportFiles.value.map((f: any) => f.raw);
+    imageImportResult.value = await importFromImages(files);
+    ElMessage.success(`分析完成：${imageImportResult.value.stats.uploaded} 张图片`);
+  } catch (e: any) {
+    ElMessage.error(e.message || '导入失败');
+  } finally {
+    imageImportLoading.value = false;
+  }
+}
+
+function handleUseImageImport() {
+  const r = imageImportResult.value;
+  if (!r) return;
+  const v = r.villa;
+
+  Object.assign(form, {
+    name: v.name || '',
+    address: v.address || '',
+    maxGuests: v.maxGuests || 10,
+    bedrooms: v.bedrooms || 3,
+    area: v.area || 200,
+    basePrice: v.basePrice || 0,
+    weekendPrice: v.weekendPrice || 0,
+    deposit: v.deposit || 500,
+    description: v.description || '',
+    tags: v.tags || '团建,生日,聚会',
+    merchantId: form.merchantId || merchantOptions.value[0]?.id || null,
+  });
+
+  imageItems.value = r.images.map((img: any) => ({
+    url: img.url,
+    caption: img.caption || '',
+  }));
+  imageAnalysis.value = r.images;
+
+  // 关闭图片导入弹窗，打开编辑弹窗
+  imageImportVisible.value = false;
+  editingId.value = null;
+  dialogVisible.value = true;
+  imageImportFiles.value = [];
+  imageImportResult.value = null;
+
+  ElMessage.info('已填入数据，请确认后保存');
 }
 
 // 从 URL 导入
