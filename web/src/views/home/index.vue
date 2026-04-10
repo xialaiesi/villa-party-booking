@@ -32,22 +32,6 @@
       </div>
     </div>
 
-    <!-- 限时活动 -->
-    <div class="section-wrap bg-warm" v-if="banners.length">
-      <div class="container section">
-        <div class="section-header"><h2>🎉 限时活动</h2></div>
-        <div class="banner-grid">
-          <div class="banner-card" v-for="b in banners" :key="b.id" @click="goBanner(b)">
-            <img :src="resolveImg(b.coverImage) || '/vite.svg'" />
-            <div class="banner-info">
-              <div class="banner-name">{{ b.name }}</div>
-              <div class="banner-tag" v-if="b.discount">立减 ¥{{ b.discount }}</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
     <!-- 精选别墅 -->
     <div class="section-wrap">
       <div class="container section">
@@ -75,6 +59,22 @@
           </div>
         </div>
         <el-skeleton v-else :rows="5" animated />
+      </div>
+    </div>
+
+    <!-- 限时活动 -->
+    <div class="section-wrap bg-warm" v-if="banners.length">
+      <div class="container section">
+        <div class="section-header"><h2>🎉 限时活动</h2></div>
+        <div class="banner-grid">
+          <div class="banner-card" v-for="b in banners" :key="b.id" @click="goBanner(b)">
+            <img :src="resolveImg(b.coverImage) || '/vite.svg'" />
+            <div class="banner-info">
+              <div class="banner-name">{{ b.name }}</div>
+              <div class="banner-tag" v-if="b.discount">立减 ¥{{ b.discount }}</div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
