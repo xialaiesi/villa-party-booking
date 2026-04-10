@@ -13,7 +13,7 @@
           <el-button type="primary" size="large" @click="goSearch">搜索</el-button>
         </div>
         <div class="scene-tags">
-          <span v-for="t in scenes" :key="t" @click="goSearch(t)">{{ t }}</span>
+          <span v-for="(t, i) in scenes" :key="t" :class="'tag-' + (i % 6)" @click="goSearch(t)">{{ t }}</span>
         </div>
       </div>
     </div>
@@ -226,33 +226,51 @@ function handleBannerClick(b: any) { if (b.link) window.open(b.link, '_blank'); 
 .home-page { background: #f8f6f3; min-height: 100vh; }
 
 /* ===== Hero ===== */
-.hero { position: relative; padding: 100px 0 80px; color: #fff; overflow: hidden; }
+.hero { position: relative; padding: 110px 0 80px; color: #fff; overflow: hidden; }
 .hero-overlay {
   position: absolute; inset: 0;
-  background: linear-gradient(180deg, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0.15) 60%, rgba(248,246,243,1) 100%);
+  background: linear-gradient(180deg, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0.2) 60%, rgba(248,246,243,1) 100%);
   z-index: 1;
 }
 .hero-content { position: relative; z-index: 2; }
 .hero-content h1 {
-  font-size: 48px; font-weight: 800; text-align: center;
-  margin-bottom: 16px; text-shadow: 0 3px 16px rgba(0,0,0,0.25);
-  letter-spacing: 3px;
+  font-size: 52px; font-weight: 900; text-align: center;
+  margin-bottom: 18px;
+  text-shadow: 0 4px 20px rgba(0,0,0,0.3);
+  letter-spacing: 6px;
+  font-family: 'PingFang SC', 'Noto Sans SC', 'Microsoft YaHei', sans-serif;
 }
 .hero-content p {
-  font-size: 20px; text-align: center; opacity: 0.9;
-  margin-bottom: 40px; letter-spacing: 4px;
+  font-size: 22px; text-align: center; opacity: 0.92;
+  margin-bottom: 44px; letter-spacing: 6px;
+  font-weight: 300;
+  text-shadow: 0 2px 8px rgba(0,0,0,0.2);
 }
-.search-box { display: flex; gap: 12px; max-width: 680px; margin: 0 auto; }
-.search-input { border-radius: 8px; }
-.scene-tags { display: flex; justify-content: center; gap: 10px; margin-top: 28px; flex-wrap: wrap; }
+.search-box { display: flex; gap: 0; max-width: 700px; margin: 0 auto; background: #fff; border-radius: 28px; padding: 4px; box-shadow: 0 8px 32px rgba(0,0,0,0.15); }
+.search-input { border: none; flex: 1; }
+.search-input :deep(.el-input__wrapper) { box-shadow: none !important; border-radius: 24px; padding-left: 20px; }
+.search-box .el-button { border-radius: 24px; padding: 0 32px; font-weight: 600; background: linear-gradient(135deg, #ff6b35, #ff4500); border: none; }
+.scene-tags { display: flex; justify-content: center; gap: 12px; margin-top: 32px; flex-wrap: wrap; }
 .scene-tags span {
-  background: rgba(255,255,255,0.18); color: #fff;
-  padding: 8px 22px; border-radius: 24px; font-size: 14px;
-  cursor: pointer; transition: all 0.25s;
-  border: 1px solid rgba(255,255,255,0.25);
-  backdrop-filter: blur(8px);
+  padding: 10px 26px; border-radius: 24px; font-size: 14px; font-weight: 500;
+  cursor: pointer; transition: all 0.3s;
+  border: none; backdrop-filter: blur(12px);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
 }
-.scene-tags span:hover { background: #fff; color: #ff6b35; border-color: #fff; }
+.scene-tags span:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(0,0,0,0.2); }
+/* 6 种颜色的场景标签 */
+.scene-tags .tag-0 { background: rgba(255,107,53,0.85); color: #fff; }
+.scene-tags .tag-0:hover { background: #ff6b35; }
+.scene-tags .tag-1 { background: rgba(233,30,99,0.8); color: #fff; }
+.scene-tags .tag-1:hover { background: #e91e63; }
+.scene-tags .tag-2 { background: rgba(76,175,80,0.8); color: #fff; }
+.scene-tags .tag-2:hover { background: #4caf50; }
+.scene-tags .tag-3 { background: rgba(33,150,243,0.8); color: #fff; }
+.scene-tags .tag-3:hover { background: #2196f3; }
+.scene-tags .tag-4 { background: rgba(156,39,176,0.8); color: #fff; }
+.scene-tags .tag-4:hover { background: #9c27b0; }
+.scene-tags .tag-5 { background: rgba(255,152,0,0.85); color: #fff; }
+.scene-tags .tag-5:hover { background: #ff9800; }
 
 /* ===== Section 通用 ===== */
 .section-wrap { padding: 0; }
@@ -261,8 +279,16 @@ function handleBannerClick(b: any) { if (b.link) window.open(b.link, '_blank'); 
 .carousel-wrap { padding-top: 20px; margin-top: -40px; position: relative; z-index: 3; }
 .section { padding: 48px 0; }
 .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 28px; }
-.section-header h2 { font-size: 24px; color: #1e293b; font-weight: 700; }
-.more-link { color: #ff6b35; font-size: 14px; font-weight: 500; }
+.section-header h2 {
+  font-size: 26px; color: #1e293b; font-weight: 800;
+  font-family: 'PingFang SC', 'Noto Sans SC', sans-serif;
+}
+.more-link {
+  color: #ff6b35; font-size: 14px; font-weight: 500;
+  padding: 6px 16px; border: 1px solid #ff6b35; border-radius: 20px;
+  transition: all 0.2s;
+}
+.more-link:hover { background: #ff6b35; color: #fff; }
 
 /* ===== 轮播图 ===== */
 .carousel-item { position: relative; height: 100%; border-radius: 16px; overflow: hidden; cursor: pointer; box-shadow: 0 8px 30px rgba(0,0,0,0.12); }

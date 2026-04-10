@@ -93,43 +93,50 @@ function handleCommand(cmd: string) {
 
 /* ===== Header ===== */
 .header {
-  background: #fff;
-  box-shadow: 0 1px 12px rgba(0, 0, 0, 0.06);
+  background: rgba(255,255,255,0.95);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 1px 0 rgba(0,0,0,0.06);
   position: sticky; top: 0; z-index: 100;
-  transition: all 0.35s ease;
 }
 .header-inner {
   display: flex; align-items: center; justify-content: space-between;
-  height: 68px;
+  height: 64px;
 }
 .logo { cursor: pointer; }
 .logo-text {
-  font-size: 22px; font-weight: 800; color: #ff6b35;
-  letter-spacing: 2px;
-  transition: color 0.3s;
+  font-size: 24px; font-weight: 900; letter-spacing: 3px;
+  background: linear-gradient(135deg, #ff6b35, #e91e63);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  font-family: 'PingFang SC', 'Noto Sans SC', sans-serif;
 }
 
-.nav { display: flex; gap: 36px; }
+.nav { display: flex; gap: 8px; }
 .nav a {
-  font-size: 15px; color: #475569; position: relative;
-  padding: 22px 0; transition: color 0.2s; font-weight: 500;
+  font-size: 14px; color: #64748b; position: relative;
+  padding: 8px 18px; border-radius: 20px;
+  transition: all 0.25s; font-weight: 500;
 }
-.nav a:hover { color: #ff6b35; }
-.nav a.router-link-exact-active { color: #ff6b35; font-weight: 600; }
-.nav a.router-link-exact-active::after {
-  content: ''; position: absolute; bottom: 18px; left: 50%; transform: translateX(-50%);
-  width: 20px; height: 3px; background: #ff6b35; border-radius: 2px;
+.nav a:hover { color: #1e293b; background: #f1f5f9; }
+.nav a.router-link-exact-active {
+  color: #fff; font-weight: 600;
+  background: linear-gradient(135deg, #ff6b35, #ff4500);
+  box-shadow: 0 2px 8px rgba(255,107,53,0.3);
 }
+.nav a.router-link-exact-active::after { display: none; }
 
 .user-area { display: flex; align-items: center; }
 .login-btn {
-  padding: 7px 22px; border-radius: 20px;
-  border: 1.5px solid #ff6b35; color: #ff6b35;
-  font-size: 14px; font-weight: 500; cursor: pointer;
-  transition: all 0.25s; background: transparent;
+  padding: 8px 24px; border-radius: 20px;
+  font-size: 14px; font-weight: 600; cursor: pointer;
+  transition: all 0.25s;
+  background: linear-gradient(135deg, #ff6b35, #ff4500);
+  color: #fff; border: none;
+  box-shadow: 0 2px 8px rgba(255,107,53,0.3);
 }
 .login-btn:hover {
-  background: #ff6b35; color: #fff;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(255,107,53,0.4);
 }
 
 .user-info {
