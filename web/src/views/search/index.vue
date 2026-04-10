@@ -55,7 +55,7 @@
 import { ref, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { listVillas } from '../../api/villa';
-import { resolveImageUrl } from '../../utils/request';
+import { thumbUrl } from '../../utils/request';
 
 const route = useRoute();
 const router = useRouter();
@@ -67,7 +67,7 @@ const list = ref<any[]>([]);
 const page = ref(1);
 const pageSize = 10;
 const total = ref(0);
-const resolveImg = resolveImageUrl;
+const resolveImg = thumbUrl;
 
 onMounted(() => {
   if (route.query.tag) tag.value = route.query.tag as string;

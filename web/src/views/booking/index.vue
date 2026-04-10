@@ -89,11 +89,11 @@ import { useRoute, useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import { getVilla } from '../../api/villa';
 import { createOrder } from '../../api/order';
-import { resolveImageUrl } from '../../utils/request';
+import { thumbUrl } from '../../utils/request';
 
 const route = useRoute();
 const router = useRouter();
-const resolveImg = resolveImageUrl;
+const resolveImg = thumbUrl;
 
 const villa = ref<any>(null);
 const dateRange = ref<string[]>([]);

@@ -20,7 +20,7 @@
           :class="{ active: currentIndex === i }"
           @click="currentIndex = Number(i)"
         >
-          <img :src="resolveImg(img.url)" />
+          <img :src="thumbUrl(img.url)" />
         </div>
         <div class="thumb view-all" v-if="villa.images?.length > 5">
           <span>+{{ villa.images.length - 5 }}</span>
@@ -139,14 +139,14 @@
 import { ref, computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { getVilla, getVillaReviews } from '../../api/villa';
-import { resolveImageUrl } from '../../utils/request';
+import { detailUrl, thumbUrl } from '../../utils/request';
 import { useUserStore } from '../../store/user';
 import { ElMessage } from 'element-plus';
 
 const route = useRoute();
 const router = useRouter();
 const userStore = useUserStore();
-const resolveImg = resolveImageUrl;
+const resolveImg = detailUrl;
 
 const villa = ref<any>(null);
 const reviews = ref<any[]>([]);
@@ -159,7 +159,7 @@ const currentImage = computed(() => {
 });
 
 const allImages = computed(() =>
-  (villa.value?.images || []).map((img: any) => resolveImg(img.url)),
+  (villa.value?.images || []).map((img: any) => detailUrl(img.url)),
 );
 
 onMounted(async () => {

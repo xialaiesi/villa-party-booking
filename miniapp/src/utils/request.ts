@@ -10,6 +10,36 @@ export function resolveImageUrl(url: string): string {
   return `${BASE_URL}${url}`;
 }
 
+/**
+ * COS 数据万象图片处理
+ * 在 COS URL 后追加 imageMogr2 参数，实现缩放/压缩/转格式
+ */
+export function ciImage(
+  url: string,
+  opts: { width?: number; height?: number; quality?: number; format?: 'webp' | 'jpg' | 'png' } = {},
+): string {
+  if (!url || !url.includes('.cos.') && !url.includes('.myqcloud.com')) return url;
+  const parts: string[] = [];
+  if (opts.width && opts.height) parts.push(`thumbnail/${opts.width}x${opts.height}`);
+  else if (opts.width) parts.push(`thumbnail/${opts.width}x`);
+  else if (opts.height) parts.push(`thumbnail/x${opts.height}`);
+  if (opts.format) parts.push(`format/${opts.format}`);
+  parts.push(`quality/${opts.quality ?? 80}`);
+  if (!parts.length) return url;
+  const sep = url.includes('?') ? '&' : '?';
+  return `${url}${sep}imageMogr2/${parts.join('/')}`;
+}
+
+/** 列表页缩略图 (400px 宽, webp, 质量 75) */
+export function thumbUrl(url: string): string {
+  return ciImage(resolveImageUrl(url), { width: 400, format: 'webp', quality: 75 });
+}
+
+/** 详情页大图 (800px 宽, webp, 质量 85) */
+export function detailUrl(url: string): string {
+  return ciImage(resolveImageUrl(url), { width: 800, format: 'webp', quality: 85 });
+}
+
 interface RequestOptions {
   url: string;
   method?: 'GET' | 'POST' | 'PUT' | 'DELETE';

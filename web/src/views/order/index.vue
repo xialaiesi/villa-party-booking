@@ -37,10 +37,10 @@
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { listOrders } from '../../api/order';
-import { resolveImageUrl } from '../../utils/request';
+import { thumbUrl } from '../../utils/request';
 
 const router = useRouter();
-const resolveImg = resolveImageUrl;
+const resolveImg = thumbUrl;
 const orders = ref<any[]>([]);
 const activeTab = ref('');
 

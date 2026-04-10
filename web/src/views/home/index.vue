@@ -98,14 +98,14 @@ import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { Search } from '@element-plus/icons-vue';
 import { getHome } from '../../api/villa';
-import { resolveImageUrl } from '../../utils/request';
+import { thumbUrl } from '../../utils/request';
 
 const router = useRouter();
 const keyword = ref('');
 const banners = ref<any[]>([]);
 const villas = ref<any[]>([]);
 const groupBuys = ref<any[]>([]);
-const resolveImg = resolveImageUrl;
+const resolveImg = thumbUrl;
 
 const scenes = ['团建聚会', '生日派对', '朋友聚会', '亲子活动', '毕业趴', '闺蜜趴'];
 
