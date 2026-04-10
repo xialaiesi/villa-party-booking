@@ -1,14 +1,10 @@
 import { Injectable, BadRequestException, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as cheerio from 'cheerio';
-import { writeFileSync, existsSync, mkdirSync } from 'fs';
-import { join } from 'path';
 import { imageSize } from 'image-size';
 import puppeteer from 'puppeteer';
 import OpenAI from 'openai';
-
-const UPLOAD_DIR = 'uploads';
-if (!existsSync(UPLOAD_DIR)) mkdirSync(UPLOAD_DIR, { recursive: true });
+import { CosService } from '../../common/cos/cos.service';
 
 /** 图片过滤阈值 */
 const MIN_IMAGE_WIDTH = 400;
@@ -41,7 +37,10 @@ export class ImportService {
   private textModel: string;
   private readonly logger = new Logger(ImportService.name);
 
-  constructor(config: ConfigService) {
+  constructor(
+    config: ConfigService,
+    private readonly cosService: CosService,
+  ) {
     this.client = new OpenAI({
       baseURL: config.get('AI_BASE_URL'),
       apiKey: config.get('AI_API_KEY'),
@@ -295,13 +294,12 @@ export class ImportService {
   }
 
   /**
-   * 下载图片到本地，按尺寸过滤掉小图
-   * 返回本地访问 URL（/uploads/xxx.ext）
+   * 下载图片并上传到 COS，按尺寸过滤掉小图
+   * 返回 COS 访问 URL
    */
   private async downloadAndFilterImages(urls: string[]): Promise<string[]> {
     const results: string[] = [];
 
-    // 并发下载，最多 10 个
     const promises = urls.map(async (url) => {
       try {
         const res = await fetch(url, {
@@ -331,14 +329,21 @@ export class ImportService {
           return null;
         }
 
-        // 保存到本地
-        const ext = this.getExtFromUrl(url) || 'jpg';
-        const filename = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}.${ext}`;
-        const filepath = join(UPLOAD_DIR, filename);
-        writeFileSync(filepath, buffer);
-        return `/uploads/${filename}`;
+        // 上传到 COS
+        if (this.cosService.isEnabled()) {
+          const ext = this.getExtFromUrl(url) || 'jpg';
+          const cosUrl = await this.cosService.uploadBuffer(
+            buffer,
+            `import.${ext}`,
+            'villa',
+          );
+          return cosUrl;
+        } else {
+          this.logger.warn('COS 未配置，跳过图片');
+          return null;
+        }
       } catch (e: any) {
-        this.logger.warn(`下载失败 ${url}: ${e.message}`);
+        this.logger.warn(`下载/上传失败 ${url}: ${e.message}`);
         return null;
       }
     });

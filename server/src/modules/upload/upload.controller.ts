@@ -7,25 +7,9 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
-import { diskStorage } from 'multer';
-import { extname } from 'path';
-import { existsSync, mkdirSync } from 'fs';
+import { memoryStorage } from 'multer';
 import { Public } from '../../common/decorators/public.decorator';
-
-const UPLOAD_DIR = 'uploads';
-
-// 确保目录存在
-if (!existsSync(UPLOAD_DIR)) {
-  mkdirSync(UPLOAD_DIR, { recursive: true });
-}
-
-const storage = diskStorage({
-  destination: UPLOAD_DIR,
-  filename: (_req, file, cb) => {
-    const randomName = Date.now() + '-' + Math.random().toString(36).slice(2, 10);
-    cb(null, randomName + extname(file.originalname));
-  },
-});
+import { CosService } from '../../common/cos/cos.service';
 
 const fileFilter = (_req: any, file: any, cb: any) => {
   if (!/\.(jpg|jpeg|png|gif|webp)$/i.test(file.originalname)) {
@@ -34,8 +18,13 @@ const fileFilter = (_req: any, file: any, cb: any) => {
   cb(null, true);
 };
 
+// 使用内存存储，再上传到 COS
+const storage = memoryStorage();
+
 @Controller('api/upload')
 export class UploadController {
+  constructor(private readonly cosService: CosService) {}
+
   /** 上传单张图片 */
   @Public()
   @Post()
@@ -44,11 +33,8 @@ export class UploadController {
   )
   async uploadSingle(@UploadedFile() file: Express.Multer.File) {
     if (!file) throw new BadRequestException('未上传文件');
-    return {
-      url: `/uploads/${file.filename}`,
-      filename: file.filename,
-      size: file.size,
-    };
+    const url = await this.cosService.uploadFile(file);
+    return { url, filename: file.originalname, size: file.size };
   }
 
   /** 批量上传图片 */
@@ -63,10 +49,13 @@ export class UploadController {
   )
   async uploadBatch(@UploadedFiles() files: Express.Multer.File[]) {
     if (!files?.length) throw new BadRequestException('未上传文件');
-    return files.map((f) => ({
-      url: `/uploads/${f.filename}`,
-      filename: f.filename,
-      size: f.size,
+    const urls = await Promise.all(
+      files.map((f) => this.cosService.uploadFile(f)),
+    );
+    return urls.map((url, i) => ({
+      url,
+      filename: files[i].originalname,
+      size: files[i].size,
     }));
   }
 }

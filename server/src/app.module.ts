@@ -5,6 +5,7 @@ import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { join } from 'path';
 import { PrismaModule } from './prisma/prisma.module';
 import { RedisModule } from './common/redis/redis.module';
+import { CosModule } from './common/cos/cos.module';
 import { AllExceptionsFilter } from './common/filters/http-exception.filter';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
@@ -42,6 +43,7 @@ import { UploadModule } from './modules/upload/upload.module';
     }),
     PrismaModule,
     RedisModule,
+    CosModule,
     AuthModule,
     VillaModule,
     OrderModule,
