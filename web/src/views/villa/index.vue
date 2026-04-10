@@ -45,11 +45,15 @@
             </div>
           </div>
           <div class="merchant-row" v-if="villa.merchant">
-            <el-tag size="small" type="warning">{{ villa.merchant.name }}</el-tag>
-            <el-tag size="small">官方认证</el-tag>
+            <span class="badge merchant-badge">{{ villa.merchant.name }}</span>
+            <span class="badge verify-badge">官方认证</span>
           </div>
           <div class="villa-meta">
-            {{ villa.maxGuests }}人 · {{ villa.bedrooms }}卧 · {{ villa.area }}㎡
+            <span class="meta-item"><b>{{ villa.maxGuests }}</b>人</span>
+            <span class="meta-dot">·</span>
+            <span class="meta-item"><b>{{ villa.bedrooms }}</b>卧</span>
+            <span class="meta-dot">·</span>
+            <span class="meta-item"><b>{{ villa.area }}</b>㎡</span>
           </div>
           <div class="villa-address">📍 {{ villa.address }}</div>
         </div>
@@ -58,8 +62,8 @@
         <div class="card">
           <h3>设施配套</h3>
           <div class="facility-grid">
-            <div class="facility" v-for="f in villa.facilities" :key="f.id">
-              <span>✓</span>{{ f.name }}
+            <div class="facility-chip" v-for="f in villa.facilities" :key="f.id">
+              {{ f.name }}
             </div>
           </div>
         </div>
@@ -274,23 +278,41 @@ function formatDate(d: string) {
   background: #fff; padding: 30px; border-radius: 12px;
   margin-bottom: 20px;
 }
-.card h3 { font-size: 18px; color: #333; margin-bottom: 16px; }
+.card h3 { font-size: 18px; color: #1e293b; margin-bottom: 16px; font-weight: 700; }
 
 .title-row { display: flex; justify-content: space-between; align-items: flex-start; }
-.title-row h1 { font-size: 28px; color: #333; }
-.rating { font-size: 14px; color: #666; }
+.title-row h1 { font-size: 28px; color: #1e293b; font-weight: 800; }
+.rating { font-size: 14px; color: #e6a23c; font-weight: 500; }
 .merchant-row { display: flex; gap: 8px; margin: 12px 0; }
-.villa-meta { font-size: 14px; color: #666; margin: 8px 0; }
-.villa-address { font-size: 14px; color: #999; }
+.badge {
+  display: inline-block; padding: 4px 12px; border-radius: 16px;
+  font-size: 12px; font-weight: 600;
+}
+.merchant-badge {
+  background: linear-gradient(135deg, #fff3ed, #ffe8d6); color: #ff6b35;
+  border: 1px solid #ffd4b8;
+}
+.verify-badge {
+  background: linear-gradient(135deg, #e8f5e9, #c8e6c9); color: #2e7d32;
+  border: 1px solid #a5d6a7;
+}
+.villa-meta {
+  font-size: 15px; color: #64748b; margin: 10px 0;
+  display: flex; align-items: center; gap: 6px;
+}
+.meta-item b { color: #1e293b; font-weight: 700; font-size: 17px; }
+.meta-dot { color: #cbd5e1; }
+.villa-address { font-size: 14px; color: #94a3b8; }
 
 .facility-grid {
-  display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;
+  display: flex; flex-wrap: wrap; gap: 10px;
 }
-.facility {
-  display: flex; align-items: center; gap: 8px;
-  font-size: 14px; color: #666;
+.facility-chip {
+  padding: 8px 18px; border-radius: 20px; font-size: 13px; font-weight: 500;
+  background: #f8fafc; color: #475569; border: 1px solid #e2e8f0;
+  transition: all 0.2s;
 }
-.facility span { color: #27ae60; font-weight: bold; }
+.facility-chip:hover { background: #f0f7ff; color: #3b82f6; border-color: #bfdbfe; }
 
 .description { font-size: 14px; color: #666; line-height: 1.8; }
 
