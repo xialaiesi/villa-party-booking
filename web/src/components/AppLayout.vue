@@ -1,10 +1,9 @@
 <template>
   <div class="layout">
     <!-- 顶部导航 -->
-    <header class="header">
+    <header class="header" :class="{ transparent: isHome && !scrolled }">
       <div class="container header-inner">
         <div class="logo" @click="$router.push('/')">
-          <span class="logo-icon">🏡</span>
           <span class="logo-text">别墅轰趴</span>
         </div>
         <nav class="nav">
@@ -16,9 +15,8 @@
           <template v-if="userStore.isLoggedIn">
             <el-dropdown @command="handleCommand">
               <span class="user-info">
-                <el-icon><UserFilled /></el-icon>
+                <span class="user-avatar">{{ (userStore.info?.nickname || '我').charAt(0) }}</span>
                 {{ userStore.info?.nickname || '我的' }}
-                <el-icon><ArrowDown /></el-icon>
               </span>
               <template #dropdown>
                 <el-dropdown-menu>
@@ -30,7 +28,7 @@
             </el-dropdown>
           </template>
           <template v-else>
-            <el-button type="primary" @click="$router.push('/login')">登录 / 注册</el-button>
+            <span class="login-btn" @click="$router.push('/login')">登录 / 注册</span>
           </template>
         </div>
       </div>
@@ -68,12 +66,20 @@
 </template>
 
 <script setup lang="ts">
-import { useRouter } from 'vue-router';
-import { UserFilled, ArrowDown } from '@element-plus/icons-vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import { useUserStore } from '../store/user';
 
+const route = useRoute();
 const router = useRouter();
 const userStore = useUserStore();
+const scrolled = ref(false);
+
+const isHome = computed(() => route.path === '/');
+
+function onScroll() { scrolled.value = window.scrollY > 60; }
+onMounted(() => window.addEventListener('scroll', onScroll));
+onUnmounted(() => window.removeEventListener('scroll', onScroll));
 
 function handleCommand(cmd: string) {
   switch (cmd) {
@@ -94,54 +100,92 @@ function handleCommand(cmd: string) {
 <style scoped>
 .layout { display: flex; flex-direction: column; min-height: 100vh; }
 
+/* ===== Header ===== */
 .header {
   background: #fff;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 1px 12px rgba(0, 0, 0, 0.06);
   position: sticky; top: 0; z-index: 100;
+  transition: all 0.35s ease;
 }
+.header.transparent {
+  background: transparent;
+  box-shadow: none;
+}
+.header.transparent .logo-text { color: #fff; }
+.header.transparent .nav a { color: rgba(255,255,255,0.85); }
+.header.transparent .nav a:hover { color: #fff; }
+.header.transparent .nav a.router-link-exact-active { color: #fff; }
+.header.transparent .nav a.router-link-exact-active::after { background: #fff; }
+.header.transparent .login-btn {
+  border-color: rgba(255,255,255,0.6); color: #fff;
+}
+.header.transparent .login-btn:hover {
+  background: #fff; color: #ff6b35; border-color: #fff;
+}
+.header.transparent .user-info { color: #fff; }
+
 .header-inner {
   display: flex; align-items: center; justify-content: space-between;
-  height: 72px;
+  height: 68px;
 }
-.logo { display: flex; align-items: center; gap: 10px; cursor: pointer; }
-.logo-icon { font-size: 32px; }
-.logo-text { font-size: 22px; font-weight: bold; color: #ff6b35; }
+.logo { cursor: pointer; }
+.logo-text {
+  font-size: 22px; font-weight: 800; color: #ff6b35;
+  letter-spacing: 2px;
+  transition: color 0.3s;
+}
 
-.nav { display: flex; gap: 40px; }
+.nav { display: flex; gap: 36px; }
 .nav a {
-  font-size: 16px; color: #333; position: relative;
-  padding: 24px 0; transition: color 0.2s;
+  font-size: 15px; color: #475569; position: relative;
+  padding: 22px 0; transition: color 0.2s; font-weight: 500;
 }
 .nav a:hover { color: #ff6b35; }
-.nav a.router-link-exact-active {
-  color: #ff6b35; font-weight: bold;
-}
+.nav a.router-link-exact-active { color: #ff6b35; font-weight: 600; }
 .nav a.router-link-exact-active::after {
-  content: ''; position: absolute; bottom: 16px; left: 0; right: 0;
-  height: 3px; background: #ff6b35; border-radius: 2px;
+  content: ''; position: absolute; bottom: 18px; left: 50%; transform: translateX(-50%);
+  width: 20px; height: 3px; background: #ff6b35; border-radius: 2px;
+}
+
+.user-area { display: flex; align-items: center; }
+.login-btn {
+  padding: 7px 22px; border-radius: 20px;
+  border: 1.5px solid #ff6b35; color: #ff6b35;
+  font-size: 14px; font-weight: 500; cursor: pointer;
+  transition: all 0.25s; background: transparent;
+}
+.login-btn:hover {
+  background: #ff6b35; color: #fff;
 }
 
 .user-info {
-  display: flex; align-items: center; gap: 6px;
-  cursor: pointer; color: #333; font-size: 14px;
+  display: flex; align-items: center; gap: 8px;
+  cursor: pointer; color: #475569; font-size: 14px; font-weight: 500;
+  transition: color 0.2s;
+}
+.user-avatar {
+  width: 30px; height: 30px; border-radius: 50%;
+  background: linear-gradient(135deg, #ff6b35, #ff8f65);
+  color: #fff; font-size: 13px; font-weight: 600;
+  display: flex; align-items: center; justify-content: center;
 }
 
 .main { flex: 1; }
 
+/* ===== Footer ===== */
 .footer {
-  background: #2c2c2c; color: #aaa;
+  background: #1e293b; color: #94a3b8;
   padding: 60px 0 24px;
-  margin-top: 60px;
 }
 .footer-inner {
   display: grid; grid-template-columns: repeat(3, 1fr); gap: 60px;
   padding-bottom: 40px;
-  border-bottom: 1px solid #444;
+  border-bottom: 1px solid #334155;
 }
-.footer-col h4 { color: #fff; font-size: 16px; margin-bottom: 16px; }
-.footer-col p { font-size: 14px; line-height: 1.8; margin-bottom: 4px; }
+.footer-col h4 { color: #e2e8f0; font-size: 16px; margin-bottom: 16px; font-weight: 600; }
+.footer-col p { font-size: 14px; line-height: 2; margin-bottom: 2px; }
 .footer-bottom {
   text-align: center; padding-top: 24px;
-  font-size: 14px; color: #888;
+  font-size: 13px; color: #64748b;
 }
 </style>
