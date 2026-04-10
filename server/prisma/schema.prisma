@@ -681,6 +681,22 @@ model UserMessage {
   @@map("user_message")
 }
 
+model AdminMessage {
+  id         BigInt   @id @default(autoincrement())
+  merchantId BigInt   @map("merchant_id")  // 目标商家，0=平台全局
+  adminId    BigInt?  @map("admin_id")     // 指定管理员，null=该商家所有管理员
+  type       String   @db.VarChar(30)      // order/system
+  title      String   @db.VarChar(200)
+  content    String   @db.Text
+  link       String?  @db.VarChar(500)
+  readAt     DateTime? @map("read_at")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@index([merchantId])
+  @@index([adminId])
+  @@map("admin_message")
+}
+
 // ==================== 管理员 ====================
 
 model Admin {

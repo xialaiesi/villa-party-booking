@@ -73,6 +73,34 @@
       <el-header class="header">
         <span class="header-title">{{ route.meta.title }}</span>
         <div class="header-right">
+          <el-popover placement="bottom-end" :width="360" trigger="click" @show="loadMessages">
+            <template #reference>
+              <div class="notify-btn">
+                <el-icon :size="20"><Bell /></el-icon>
+                <span v-if="unreadCount > 0" class="notify-badge">{{ unreadCount > 99 ? '99+' : unreadCount }}</span>
+              </div>
+            </template>
+            <div class="notify-panel">
+              <div class="notify-header">
+                <span>消息通知</span>
+                <span class="notify-read-all" @click="markAllRead" v-if="unreadCount > 0">全部已读</span>
+              </div>
+              <div class="notify-list" v-if="messages.length">
+                <div
+                  v-for="m in messages"
+                  :key="m.id"
+                  class="notify-item"
+                  :class="{ unread: !m.read }"
+                  @click="handleClickMsg(m)"
+                >
+                  <div class="notify-title">{{ m.title }}</div>
+                  <div class="notify-content">{{ m.content }}</div>
+                  <div class="notify-time">{{ fmtTime(m.createdAt) }}</div>
+                </div>
+              </div>
+              <div v-else class="notify-empty">暂无消息</div>
+            </div>
+          </el-popover>
           <div class="user-avatar">{{ (userStore.info?.nickname || userStore.info?.username || 'A').charAt(0) }}</div>
           <span class="user-name">{{ userStore.info?.nickname || userStore.info?.username }}</span>
           <span class="logout-link" @click="handleLogout">退出</span>
@@ -86,13 +114,15 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import {
   DataAnalysis, House, Calendar, ShoppingBag, Document, Setting,
-  List, Present, Service, Star, OfficeBuilding, Money, Brush, PictureFilled,
+  List, Present, Service, Star, OfficeBuilding, Money, Brush, PictureFilled, Bell,
 } from '@element-plus/icons-vue';
+import { ElMessage } from 'element-plus';
 import { useUserStore } from '../../store/user';
+import request from '../../utils/request';
 
 const route = useRoute();
 const router = useRouter();
@@ -103,6 +133,59 @@ const roleLabel = computed(() => {
   if (userStore.isMerchant) return userStore.info?.merchantName || '商家';
   return '';
 });
+
+// 消息通知
+const unreadCount = ref(0);
+const messages = ref<any[]>([]);
+let pollTimer: any = null;
+
+async function loadUnreadCount() {
+  try {
+    const res: any = await request.get('/api/admin/messages/unread-count');
+    const prev = unreadCount.value;
+    unreadCount.value = res.count;
+    // 有新消息时弹窗提醒
+    if (res.count > prev && prev >= 0 && res.count > 0) {
+      ElMessage({ message: `📬 你有 ${res.count} 条未读消息`, type: 'info', duration: 3000 });
+    }
+  } catch { /* ignore */ }
+}
+
+async function loadMessages() {
+  try {
+    const res: any = await request.get('/api/admin/messages', { params: { pageSize: 20 } });
+    messages.value = res.list || [];
+  } catch { /* ignore */ }
+}
+
+async function markAllRead() {
+  await request.post('/api/admin/messages/read-all');
+  unreadCount.value = 0;
+  messages.value = messages.value.map((m: any) => ({ ...m, read: true }));
+}
+
+async function handleClickMsg(m: any) {
+  if (!m.read) {
+    await request.post(`/api/admin/messages/${m.id}/read`);
+    m.read = true;
+    unreadCount.value = Math.max(0, unreadCount.value - 1);
+  }
+  if (m.link) router.push(m.link);
+}
+
+function fmtTime(d: string) {
+  const diff = Date.now() - new Date(d).getTime();
+  if (diff < 60000) return '刚刚';
+  if (diff < 3600000) return `${Math.floor(diff / 60000)} 分钟前`;
+  if (diff < 86400000) return `${Math.floor(diff / 3600000)} 小时前`;
+  return new Date(d).toLocaleDateString('zh-CN');
+}
+
+onMounted(() => {
+  loadUnreadCount();
+  pollTimer = setInterval(loadUnreadCount, 30000); // 30秒轮询
+});
+onUnmounted(() => { if (pollTimer) clearInterval(pollTimer); });
 
 function handleLogout() {
   userStore.clear();
@@ -152,5 +235,41 @@ function handleLogout() {
   padding: 4px 10px; border-radius: 6px; transition: all 0.2s;
 }
 .logout-link:hover { color: #ef4444; background: #fef2f2; }
+
+/* 通知铃铛 */
+.notify-btn {
+  position: relative; cursor: pointer; padding: 6px;
+  border-radius: 8px; transition: background 0.2s;
+  display: flex; align-items: center;
+}
+.notify-btn:hover { background: #f1f5f9; }
+.notify-badge {
+  position: absolute; top: 0; right: -2px;
+  background: #ef4444; color: #fff; font-size: 10px; font-weight: 700;
+  min-width: 18px; height: 18px; line-height: 18px;
+  text-align: center; border-radius: 10px; padding: 0 4px;
+}
+
+/* 通知面板 */
+.notify-panel { margin: -12px; }
+.notify-header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 12px 16px; border-bottom: 1px solid #f1f5f9;
+  font-size: 15px; font-weight: 600; color: #1e293b;
+}
+.notify-read-all { font-size: 12px; color: #3b82f6; cursor: pointer; font-weight: 400; }
+.notify-list { max-height: 400px; overflow-y: auto; }
+.notify-item {
+  padding: 12px 16px; cursor: pointer; transition: background 0.15s;
+  border-bottom: 1px solid #f8fafc;
+}
+.notify-item:hover { background: #f8fafc; }
+.notify-item.unread { background: #f0f7ff; }
+.notify-item.unread .notify-title { font-weight: 600; }
+.notify-title { font-size: 14px; color: #1e293b; margin-bottom: 4px; }
+.notify-content { font-size: 12px; color: #64748b; line-height: 1.5; }
+.notify-time { font-size: 11px; color: #94a3b8; margin-top: 4px; }
+.notify-empty { padding: 40px; text-align: center; color: #94a3b8; font-size: 14px; }
+
 .main { background: #f1f5f9; padding: 24px; }
 </style>

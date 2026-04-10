@@ -7,12 +7,14 @@ import {
 import { PrismaService } from '../../prisma/prisma.service';
 import { RedisService } from '../../common/redis/redis.service';
 import { CreateOrderDto } from './dto/create-order.dto';
+import { AdminMessageService } from '../message/admin-message.service';
 
 @Injectable()
 export class OrderService {
   constructor(
     private prisma: PrismaService,
     private redis: RedisService,
+    private adminMessage: AdminMessageService,
   ) {}
 
   async create(userId: number, dto: CreateOrderDto) {
@@ -133,6 +135,9 @@ export class OrderService {
       include: { orderPackages: true },
     });
 
+    // 通知商家有新订单
+    this.adminMessage.notifyOrderStatusChange(order, 0).catch(() => {});
+
     return this.formatOrder(order);
   }
 
@@ -194,10 +199,11 @@ export class OrderService {
       order.days,
     );
 
-    await this.prisma.order.update({
+    const updated = await this.prisma.order.update({
       where: { id },
       data: { status: 6, cancelReason: reason },
     });
+    this.adminMessage.notifyOrderStatusChange(updated, 6).catch(() => {});
 
     return { success: true };
   }

@@ -7,6 +7,7 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../../prisma/prisma.service';
 import { MerchantService } from '../merchant/merchant.service';
+import { AdminMessageService } from '../message/admin-message.service';
 import type { AdminContext } from '../../common/types/admin-context';
 import * as crypto from 'crypto';
 
@@ -18,6 +19,7 @@ export class AdminService {
     private prisma: PrismaService,
     private jwtService: JwtService,
     private merchantService: MerchantService,
+    private adminMessage: AdminMessageService,
   ) {}
 
   // ==================== 认证 ====================
