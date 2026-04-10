@@ -13,7 +13,7 @@
       <div class="villa-row">
         <div>
           <div class="villa-name">{{ order.villa?.name }}</div>
-          <div class="date-info">{{ order.checkIn }} ~ {{ order.checkOut }}（{{ order.days }}晚）</div>
+          <div class="date-info">{{ fmtDate(order.checkIn) }} ~ {{ fmtDate(order.checkOut) }}（{{ order.days }}晚）</div>
           <div class="guest-info">入住 {{ order.guests }} 人</div>
         </div>
       </div>
@@ -70,6 +70,31 @@
       <template v-if="order.status === 3">
         <span style="color: #67c23a; font-size: 16px; font-weight: 600;">费用已结清，请按时入住</span>
       </template>
+
+      <!-- 已入住/已完成：创建相册 -->
+      <template v-if="order.status >= 4 && order.status <= 5">
+        <el-button v-if="!album" type="warning" size="large" round @click="handleCreateAlbum">
+          📸 创建共享相册
+        </el-button>
+        <el-button v-else type="success" size="large" round @click="$router.push(`/album/${album.id}`)">
+          📸 查看相册（{{ album.photoCount || 0 }}张）
+        </el-button>
+      </template>
+    </div>
+
+    <!-- 相册创建成功提示 -->
+    <div class="card album-card" v-if="album">
+      <h3>📸 聚会相册</h3>
+      <div class="album-info-row">
+        <div>
+          <div class="album-title">{{ album.title }}</div>
+          <div class="album-code">
+            邀请码：<span class="code-text" @click="copyCode">{{ album.inviteCode }}</span>
+            <span class="code-tip">（分享给朋友一起上传照片）</span>
+          </div>
+        </div>
+        <el-button type="primary" round @click="$router.push(`/album/${album.id}`)">进入相册</el-button>
+      </div>
     </div>
 
     <!-- Mock 支付弹窗 -->
@@ -113,9 +138,11 @@ import { ref, computed, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { getOrder, cancelOrder, payDeposit, payFinal } from '../../api/order';
+import { createAlbum, getMyAlbums } from '../../api/album';
 
 const route = useRoute();
 const order = ref<any>(null);
+const album = ref<any>(null);
 const payDialogVisible = ref(false);
 const paySuccessVisible = ref(false);
 const payType = ref<'deposit' | 'final'>('deposit');
@@ -130,6 +157,28 @@ onMounted(() => load());
 async function load() {
   const id = parseInt(route.params.id as string);
   order.value = await getOrder(id);
+  // 检查是否已有相册
+  if (order.value.status >= 4) {
+    try {
+      const albums: any = await getMyAlbums();
+      album.value = albums?.find((a: any) => a.orderId === order.value.id) || null;
+    } catch { /* not logged in or no albums */ }
+  }
+}
+
+async function handleCreateAlbum() {
+  try {
+    const res: any = await createAlbum({ orderId: order.value.id });
+    album.value = res;
+    ElMessage.success('相册创建成功！分享邀请码给朋友一起上传照片吧');
+  } catch (e: any) {
+    ElMessage.error(e.message || '创建失败');
+  }
+}
+
+function copyCode() {
+  navigator.clipboard.writeText(album.value.inviteCode);
+  ElMessage.success(`邀请码已复制：${album.value.inviteCode}`);
 }
 
 function handlePayDeposit() {
@@ -165,6 +214,7 @@ async function handleCancel() {
 }
 
 function formatDate(d: string) { return new Date(d).toLocaleString(); }
+function fmtDate(d: string) { return d?.split('T')[0] || d; }
 
 function statusIcon(s: number) {
   return { 0: '💰', 1: '⏳', 2: '💳', 3: '✅', 4: '🏠', 5: '🎉' }[s] || '📦';
@@ -237,6 +287,23 @@ function statusDesc(s: number) {
 .success-icon { font-size: 48px; }
 .pay-success h3 { font-size: 18px; color: #1e293b; margin: 12px 0 8px; }
 .pay-success p { font-size: 14px; color: #94a3b8; }
+
+/* 相册卡片 */
+.album-card {
+  background: linear-gradient(135deg, #f0f7ff, #e8f4fd) !important;
+  border: 1px solid #bae0ff;
+}
+.album-info-row {
+  display: flex; justify-content: space-between; align-items: center;
+}
+.album-title { font-size: 16px; font-weight: 600; color: #1e293b; }
+.album-code { font-size: 14px; color: #64748b; margin-top: 8px; }
+.code-text {
+  font-family: monospace; font-weight: 700; color: #3b82f6;
+  cursor: pointer; letter-spacing: 2px; font-size: 18px;
+}
+.code-text:hover { text-decoration: underline; }
+.code-tip { font-size: 12px; color: #94a3b8; }
 
 @media (max-width: 768px) {
   .action-bar { flex-direction: column; }
