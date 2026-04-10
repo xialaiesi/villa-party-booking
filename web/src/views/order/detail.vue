@@ -177,8 +177,9 @@ async function handleCreateAlbum() {
 }
 
 function copyCode() {
-  navigator.clipboard.writeText(album.value.inviteCode);
-  ElMessage.success(`邀请码已复制：${album.value.inviteCode}`);
+  const link = `${window.location.origin}/album/${album.value.id}`;
+  navigator.clipboard.writeText(link);
+  ElMessage.success('分享链接已复制');
 }
 
 function handlePayDeposit() {
