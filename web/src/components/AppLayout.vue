@@ -170,4 +170,19 @@ function handleCommand(cmd: string) {
   text-align: center; padding-top: 24px;
   font-size: 13px; color: #64748b;
 }
+
+/* 移动端 */
+@media (max-width: 768px) {
+  .header-inner { height: 52px; padding: 0 12px; }
+  .logo-text { font-size: 18px; letter-spacing: 1px; }
+  .nav { gap: 2px; }
+  .nav a { font-size: 12px; padding: 5px 10px; }
+  .login-btn { padding: 5px 14px; font-size: 12px; }
+  .user-avatar { width: 26px; height: 26px; font-size: 11px; }
+  .user-info { font-size: 12px; gap: 4px; }
+  .footer { padding: 30px 0 16px; }
+  .footer-inner { grid-template-columns: 1fr; gap: 20px; padding-bottom: 20px; }
+  .footer-col h4 { font-size: 14px; margin-bottom: 8px; }
+  .footer-col p { font-size: 12px; }
+}
 </style>

@@ -410,4 +410,35 @@ function handleBannerClick(b: any) { if (b.link) window.open(b.link, '_blank'); 
   text-align: center; padding: 40px 0; color: #94a3b8; font-size: 13px;
   background: #1e293b; letter-spacing: 1px;
 }
+
+/* ===== 移动端适配 ===== */
+@media (max-width: 768px) {
+  .hero { padding: 60px 0 50px; }
+  .hero-content h1 { font-size: 26px; letter-spacing: 2px; }
+  .hero-content p { font-size: 14px; letter-spacing: 2px; margin-bottom: 24px; }
+  .search-box { flex-direction: column; gap: 8px; border-radius: 12px; padding: 8px; }
+  .search-box .el-button { border-radius: 12px; width: 100%; }
+  .scene-tags { gap: 8px; }
+  .scene-tags span { padding: 6px 14px; font-size: 12px; }
+
+  .section { padding: 24px 0; }
+  .section-header h2 { font-size: 18px; }
+
+  .carousel-wrap { margin-top: -20px; }
+
+  .villa-grid { grid-template-columns: 1fr; gap: 16px; }
+  .villa-img-wrap { height: 180px; }
+
+  .banner-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .banner-card { height: 140px; }
+  .banner-name { font-size: 13px; }
+
+  .plan-grid { grid-template-columns: 1fr; gap: 14px; }
+  .theme-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  .service-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .group-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+
+  .plan-img, .theme-img { height: 140px; }
+  .service-img { height: 110px; }
+}
 </style>

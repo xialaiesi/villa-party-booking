@@ -26,38 +26,67 @@
           </div>
         </div>
       </div>
+      <ViewToggle v-model="viewMode" />
     </div>
 
-    <el-table :data="villaList" border stripe>
-      <el-table-column prop="id" label="ID" width="80" />
-      <el-table-column prop="name" label="名称" />
-      <el-table-column prop="address" label="地址" />
-      <el-table-column prop="maxGuests" label="容纳人数" width="100" align="center" />
-      <el-table-column prop="basePrice" label="平日价" width="100" align="center" />
-      <el-table-column prop="weekendPrice" label="周末价" width="100" align="center" />
-      <el-table-column prop="deposit" label="押金" width="100" align="center" />
-      <el-table-column label="状态" width="80" align="center">
+    <!-- 表格视图 -->
+    <el-table v-if="viewMode === 'table'" :data="villaList" border stripe>
+      <el-table-column label="封面" width="100">
         <template #default="{ row }">
-          <el-tag :type="row.status === 1 ? 'success' : 'info'">
-            {{ row.status === 1 ? '上架' : '下架' }}
-          </el-tag>
+          <el-image v-if="row.coverImage" :src="row.coverImage" fit="cover" style="width: 70px; height: 50px; border-radius: 4px;" />
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="180" align="center">
+      <el-table-column prop="name" label="名称" />
+      <el-table-column prop="address" label="地址" />
+      <el-table-column prop="maxGuests" label="人数" width="70" align="center" />
+      <el-table-column label="平日价" width="90" align="center">
+        <template #default="{ row }"><span style="color: #ff6b35; font-weight: 600;">¥{{ row.basePrice }}</span></template>
+      </el-table-column>
+      <el-table-column label="状态" width="70" align="center">
+        <template #default="{ row }">
+          <el-tag :type="row.status === 1 ? 'success' : 'info'" size="small">{{ row.status === 1 ? '上架' : '下架' }}</el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column label="操作" width="140" align="center">
         <template #default="{ row }">
           <div class="action-btns">
             <span class="action-link primary" @click="handleEdit(row)">编辑</span>
             <span class="action-divider">|</span>
-            <span
-              :class="['action-link', row.status === 1 ? 'danger' : 'success']"
-              @click="toggleStatus(row)"
-            >
+            <span :class="['action-link', row.status === 1 ? 'danger' : 'success']" @click="toggleStatus(row)">
               {{ row.status === 1 ? '下架' : '上架' }}
             </span>
           </div>
         </template>
       </el-table-column>
     </el-table>
+
+    <!-- 卡片视图 -->
+    <div v-else class="card-grid">
+      <div class="item-card" v-for="row in villaList" :key="row.id">
+        <div class="card-cover" style="height: 180px;">
+          <img v-if="row.coverImage" :src="row.coverImage" />
+          <div v-else class="card-empty-cover"><el-icon :size="32"><PictureIcon /></el-icon></div>
+          <el-tag class="card-badge" :type="row.status === 1 ? 'success' : 'info'" size="small">{{ row.status === 1 ? '上架' : '下架' }}</el-tag>
+        </div>
+        <div class="card-body">
+          <div class="card-title">{{ row.name }}</div>
+          <div class="card-meta">
+            <span>📍 {{ row.address }}</span>
+          </div>
+          <div class="card-meta">
+            <span>👥 {{ row.maxGuests }}人</span>
+            <span>🛏 {{ row.bedrooms }}间</span>
+          </div>
+          <div class="card-price">¥{{ row.basePrice }} <small>起/晚</small></div>
+          <div class="card-actions">
+            <span class="action-link primary" @click="handleEdit(row)">编辑</span>
+            <span :class="['action-link', row.status === 1 ? 'danger' : 'success']" @click="toggleStatus(row)">
+              {{ row.status === 1 ? '下架' : '上架' }}
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <el-pagination
       v-model:current-page="page"
@@ -271,7 +300,8 @@
 <script setup lang="ts">
 import { ref, onMounted, reactive } from 'vue';
 import { ElMessage } from 'element-plus';
-import { Link, Picture, Plus, Document, MagicStick } from '@element-plus/icons-vue';
+import { Link, Picture as PictureIcon, Plus, Document, MagicStick } from '@element-plus/icons-vue';
+import ViewToggle from '../../components/ViewToggle.vue';
 import { getVillas, createVilla, updateVilla, updateVillaStatus } from '../../api/villa';
 import { analyzeImages, generateDescription } from '../../api/ai';
 import { importFromUrl, importFromImages, importFromText } from '../../api/import';
@@ -280,6 +310,7 @@ import { getMerchants } from '../../api/merchant';
 import { useUserStore } from '../../store/user';
 
 const userStore = useUserStore();
+const viewMode = ref<'table' | 'grid'>('grid');
 
 interface ImageItem { url: string; caption: string; }
 

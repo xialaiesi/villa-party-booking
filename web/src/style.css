@@ -9,9 +9,11 @@ a { text-decoration: none; color: inherit; }
 img { display: block; }
 
 .container {
-  width: 1200px;
+  width: 100%;
+  max-width: 1200px;
   margin: 0 auto;
   padding: 0 20px;
+  box-sizing: border-box;
 }
 
 .primary-color { color: #ff6b35; }
