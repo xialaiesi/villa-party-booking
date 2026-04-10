@@ -13,12 +13,12 @@ export class HomeController {
   async getHomeData() {
     const now = new Date();
 
-    const [banners, villas, groupBuys, posts, themePacks] = await Promise.all([
-      // 限定活动作为 Banner
+    const [banners, villas, groupBuys, posts, themePacks, activityPlans, localServices] = await Promise.all([
+      // 限定活动（含即将开始的）
       this.prisma.seasonalEvent.findMany({
-        where: { status: 1, startDate: { lte: now }, endDate: { gte: now } },
-        orderBy: { createdAt: 'desc' },
-        take: 5,
+        where: { status: 1, endDate: { gte: now } },
+        orderBy: { startDate: 'asc' },
+        take: 8,
         select: {
           id: true,
           name: true,
@@ -63,7 +63,19 @@ export class HomeController {
       this.prisma.themePack.findMany({
         where: { status: 1 },
         orderBy: { sortOrder: 'desc' },
-        take: 4,
+        take: 6,
+      }),
+      // 活动方案
+      this.prisma.activityPlan.findMany({
+        where: { status: 1 },
+        orderBy: { sortOrder: 'desc' },
+        take: 6,
+      }),
+      // 周边服务
+      this.prisma.localService.findMany({
+        where: { status: 1 },
+        orderBy: { sortOrder: 'desc' },
+        take: 8,
       }),
     ]);
 
@@ -110,9 +122,31 @@ export class HomeController {
         id: Number(t.id),
         name: t.name,
         theme: t.theme,
+        description: (t as any).description,
         price: Number(t.price),
         originalPrice: t.originalPrice ? Number(t.originalPrice) : null,
         coverImage: t.coverImage,
+        items: t.items,
+      })),
+      activityPlans: activityPlans.map((p) => ({
+        id: Number(p.id),
+        name: p.name,
+        description: p.description,
+        scene: p.scene,
+        minGuests: p.minGuests,
+        maxGuests: p.maxGuests,
+        duration: p.duration,
+        coverImage: p.coverImage,
+      })),
+      localServices: localServices.map((s: any) => ({
+        id: Number(s.id),
+        name: s.name,
+        category: s.category,
+        description: s.description,
+        price: Number(s.price),
+        unit: s.unit,
+        coverImage: s.coverImage,
+        provider: s.provider,
       })),
     };
   }
