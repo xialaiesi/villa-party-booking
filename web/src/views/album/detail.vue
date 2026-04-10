@@ -71,12 +71,15 @@
     <!-- 图片详情+评论弹窗 -->
     <el-dialog v-model="photoCommentVisible" width="900px" :show-close="true" top="5vh" class="photo-dialog">
       <div class="photo-detail-layout" v-if="selectedPhoto">
-        <!-- 左：大图 -->
+        <!-- 左：大图 + 箭头 -->
         <div class="photo-detail-left">
+          <button class="nav-arrow left" @click="prevPhoto" v-if="photos.length > 1">‹</button>
+          <button class="nav-arrow right" @click="nextPhoto" v-if="photos.length > 1">›</button>
           <img :src="selectedPhoto.url" />
           <div class="photo-detail-meta">
             <span class="photo-detail-user">{{ selectedPhoto.user?.nickname || '匿名' }}</span>
             <span class="photo-detail-date">{{ formatDate(selectedPhoto.createdAt) }}</span>
+            <span class="photo-counter">{{ selectedPhotoIndex + 1 }} / {{ photos.length }}</span>
             <span v-if="selectedPhoto.caption" class="photo-detail-caption">{{ selectedPhoto.caption }}</span>
           </div>
         </div>
@@ -90,7 +93,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useRoute } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { PictureFilled } from '@element-plus/icons-vue';
@@ -108,10 +111,34 @@ const photoCommentVisible = ref(false);
 const selectedPhoto = ref<any>(null);
 const commentCounts = ref<Record<number, number>>({});
 
+const selectedPhotoIndex = computed(() =>
+  photos.value.findIndex((p: any) => p.id === selectedPhoto.value?.id)
+);
+
 function openPhotoComment(photo: any) {
   selectedPhoto.value = photo;
   photoCommentVisible.value = true;
 }
+
+function prevPhoto() {
+  const i = selectedPhotoIndex.value;
+  if (i > 0) selectedPhoto.value = photos.value[i - 1];
+  else selectedPhoto.value = photos.value[photos.value.length - 1];
+}
+
+function nextPhoto() {
+  const i = selectedPhotoIndex.value;
+  if (i < photos.value.length - 1) selectedPhoto.value = photos.value[i + 1];
+  else selectedPhoto.value = photos.value[0];
+}
+
+function onKeydown(e: KeyboardEvent) {
+  if (!photoCommentVisible.value) return;
+  if (e.key === 'ArrowLeft') prevPhoto();
+  if (e.key === 'ArrowRight') nextPhoto();
+}
+onMounted(() => window.addEventListener('keydown', onKeydown));
+onUnmounted(() => window.removeEventListener('keydown', onKeydown));
 
 async function loadCommentCounts() {
   if (!album.value || !photos.value.length) return;
@@ -264,6 +291,22 @@ function formatDate(d: string) {
 .photo-detail-left {
   flex: 1; background: #000; display: flex; flex-direction: column;
   border-radius: 8px 0 0 8px; overflow: hidden;
+  position: relative;
+}
+.nav-arrow {
+  position: absolute; top: 50%; transform: translateY(-50%);
+  width: 44px; height: 44px; border-radius: 50%;
+  background: rgba(255,255,255,0.15); color: #fff;
+  border: none; font-size: 28px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  z-index: 3; transition: background 0.2s; line-height: 1;
+  backdrop-filter: blur(4px);
+}
+.nav-arrow:hover { background: rgba(255,255,255,0.35); }
+.nav-arrow.left { left: 12px; }
+.nav-arrow.right { right: 12px; }
+.photo-counter {
+  margin-left: auto; color: #64748b; font-size: 12px;
 }
 .photo-detail-left img {
   flex: 1; object-fit: contain; max-height: 500px; width: 100%;
