@@ -200,6 +200,93 @@ export class AlbumService {
     return { success: true };
   }
 
+  // ==================== 评论 ====================
+
+  /** 获取评论列表（支持相册级和图片级） */
+  async getComments(albumId: number, photoId?: number) {
+    const where: any = { albumId, parentId: null }; // 只取顶级评论
+    if (photoId) where.photoId = photoId;
+    else where.photoId = null; // 相册级评论
+
+    const comments = await this.prisma.albumComment.findMany({
+      where,
+      orderBy: { createdAt: 'asc' },
+      include: {
+        user: { select: { id: true, nickname: true, avatar: true } },
+        replies: {
+          orderBy: { createdAt: 'asc' },
+          include: {
+            user: { select: { id: true, nickname: true, avatar: true } },
+            parent: { select: { user: { select: { nickname: true } } } },
+          },
+        },
+      },
+    });
+
+    return comments.map((c: any) => this.formatComment(c));
+  }
+
+  /** 发表评论 */
+  async addComment(albumId: number, userId: number, data: {
+    content: string;
+    photoId?: number;
+    parentId?: number;
+  }) {
+    if (!data.content?.trim()) throw new BadRequestException('评论内容不能为空');
+
+    const album = await this.prisma.album.findUnique({ where: { id: albumId } });
+    if (!album || album.status !== 1) throw new BadRequestException('相册不可用');
+
+    // 如果是回复，验证父评论存在
+    if (data.parentId) {
+      const parent = await this.prisma.albumComment.findFirst({
+        where: { id: data.parentId, albumId },
+      });
+      if (!parent) throw new BadRequestException('回复的评论不存在');
+    }
+
+    const comment = await this.prisma.albumComment.create({
+      data: {
+        albumId,
+        photoId: data.photoId || null,
+        userId,
+        parentId: data.parentId || null,
+        content: data.content.trim(),
+      },
+      include: {
+        user: { select: { id: true, nickname: true, avatar: true } },
+      },
+    });
+
+    return this.formatComment(comment);
+  }
+
+  /** 删除评论（仅评论者可删） */
+  async deleteComment(commentId: number, userId: number) {
+    const comment = await this.prisma.albumComment.findFirst({
+      where: { id: commentId, userId },
+    });
+    if (!comment) throw new NotFoundException('评论不存在');
+
+    await this.prisma.albumComment.delete({ where: { id: commentId } });
+    return { success: true };
+  }
+
+  private formatComment(c: any) {
+    return {
+      id: Number(c.id),
+      albumId: Number(c.albumId),
+      photoId: c.photoId ? Number(c.photoId) : null,
+      userId: Number(c.userId),
+      parentId: c.parentId ? Number(c.parentId) : null,
+      content: c.content,
+      createdAt: c.createdAt,
+      user: c.user,
+      replyTo: c.parent?.user?.nickname || null,
+      replies: c.replies?.map((r: any) => this.formatComment(r)) || [],
+    };
+  }
+
   private formatAlbum(album: any) {
     return {
       ...album,

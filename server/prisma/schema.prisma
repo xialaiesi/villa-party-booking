@@ -195,6 +195,7 @@ model User {
   sharePayments  SharePayment[]
   createdAlbums  Album[]       @relation("AlbumCreator")
   uploadedPhotos AlbumPhoto[]  @relation("PhotoUploader")
+  albumComments  AlbumComment[] @relation("CommentUser")
   initiatedGroups GroupBuy[]   @relation("GroupInitiator")
   groupMemberships GroupMember[]
   serviceOrders  ServiceOrder[]
@@ -399,9 +400,10 @@ model Album {
   expireAt  DateTime @map("expire_at") // 有效期1年
   createdAt DateTime @default(now()) @map("created_at")
 
-  order   Order        @relation(fields: [orderId], references: [id])
-  creator User         @relation("AlbumCreator", fields: [creatorId], references: [id])
-  photos  AlbumPhoto[]
+  order    Order          @relation(fields: [orderId], references: [id])
+  creator  User           @relation("AlbumCreator", fields: [creatorId], references: [id])
+  photos   AlbumPhoto[]
+  comments AlbumComment[]
 
   @@map("album")
 }
@@ -414,10 +416,31 @@ model AlbumPhoto {
   caption   String?  @db.VarChar(200)
   createdAt DateTime @default(now()) @map("created_at")
 
-  album Album @relation(fields: [albumId], references: [id], onDelete: Cascade)
-  user  User  @relation("PhotoUploader", fields: [userId], references: [id])
+  album    Album          @relation(fields: [albumId], references: [id], onDelete: Cascade)
+  user     User           @relation("PhotoUploader", fields: [userId], references: [id])
+  comments AlbumComment[] @relation("PhotoComments")
 
   @@map("album_photo")
+}
+
+model AlbumComment {
+  id        BigInt   @id @default(autoincrement())
+  albumId   BigInt   @map("album_id")
+  photoId   BigInt?  @map("photo_id")   // null=相册级评论，有值=图片评论
+  userId    BigInt   @map("user_id")
+  parentId  BigInt?  @map("parent_id")  // 回复的评论ID，null=顶级评论
+  content   String   @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+
+  album   Album         @relation(fields: [albumId], references: [id], onDelete: Cascade)
+  photo   AlbumPhoto?   @relation("PhotoComments", fields: [photoId], references: [id], onDelete: Cascade)
+  user    User          @relation("CommentUser", fields: [userId], references: [id])
+  parent  AlbumComment? @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies AlbumComment[] @relation("CommentReplies")
+
+  @@index([albumId])
+  @@index([photoId])
+  @@map("album_comment")
 }
 
 // ==================== 氛围包 ====================

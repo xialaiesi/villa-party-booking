@@ -82,6 +82,35 @@ export class AlbumController {
     return this.service.addPhoto(id, userId, data);
   }
 
+  /** 获取相册评论 */
+  @Public()
+  @Get('albums/:id/comments')
+  async getComments(
+    @Param('id', ParseIntPipe) id: number,
+    @Query('photoId') photoId?: string,
+  ) {
+    return this.service.getComments(id, photoId ? parseInt(photoId) : undefined);
+  }
+
+  /** 发表评论 */
+  @Post('albums/:id/comments')
+  async addComment(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser('sub') userId: number,
+    @Body() data: { content: string; photoId?: number; parentId?: number },
+  ) {
+    return this.service.addComment(id, userId, data);
+  }
+
+  /** 删除评论 */
+  @Delete('albums/comments/:commentId')
+  async deleteComment(
+    @Param('commentId', ParseIntPipe) commentId: number,
+    @CurrentUser('sub') userId: number,
+  ) {
+    return this.service.deleteComment(commentId, userId);
+  }
+
   /** 删除照片 */
   @Delete('albums/photos/:photoId')
   async removePhoto(

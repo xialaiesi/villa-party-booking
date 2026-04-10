@@ -61,7 +61,10 @@
             删除
           </el-button>
         </div>
-        <div class="photo-caption" v-if="p.caption">{{ p.caption }}</div>
+        <div class="photo-bottom">
+          <span class="photo-caption-text" v-if="p.caption">{{ p.caption }}</span>
+          <span class="photo-comment-btn" @click.stop="openPhotoComment(p)">💬 评论</span>
+        </div>
       </div>
     </div>
 
@@ -71,6 +74,17 @@
       <h3>还没有照片</h3>
       <p>点击上方「上传照片」按钮，开始记录美好瞬间</p>
     </div>
+
+    <!-- 相册级评论 -->
+    <CommentSection v-if="album" :album-id="album.id" />
+
+    <!-- 图片评论弹窗 -->
+    <el-dialog v-model="photoCommentVisible" :title="'图片评论'" width="600px">
+      <div v-if="selectedPhoto" style="text-align: center; margin-bottom: 16px;">
+        <el-image :src="selectedPhoto.url" fit="contain" style="max-height: 300px; border-radius: 8px;" />
+      </div>
+      <CommentSection v-if="selectedPhoto && album" :album-id="album.id" :photo-id="selectedPhoto.id" />
+    </el-dialog>
   </div>
 </template>
 
@@ -82,12 +96,20 @@ import { PictureFilled } from '@element-plus/icons-vue';
 import { getAlbumDetail, addPhoto, deletePhoto } from '../../api/album';
 import { uploadSingle } from '../../api/upload';
 import { useUserStore } from '../../store/user';
+import CommentSection from '../../components/CommentSection.vue';
 
 const route = useRoute();
 const userStore = useUserStore();
 const album = ref<any>(null);
 const photos = ref<any[]>([]);
 const currentUserId = ref<number>(0);
+const photoCommentVisible = ref(false);
+const selectedPhoto = ref<any>(null);
+
+function openPhotoComment(photo: any) {
+  selectedPhoto.value = photo;
+  photoCommentVisible.value = true;
+}
 
 onMounted(async () => {
   currentUserId.value = userStore.info?.id || 0;
@@ -208,10 +230,17 @@ function formatDate(d: string) {
 .photo-info { display: flex; flex-direction: column; gap: 2px; }
 .photo-user { font-size: 13px; font-weight: 500; }
 .photo-date { font-size: 11px; opacity: 0.8; }
-.photo-caption {
-  padding: 10px 12px; font-size: 13px; color: #64748b;
+.photo-bottom {
+  padding: 8px 12px; font-size: 13px; color: #64748b;
   border-top: 1px solid #f1f5f9;
+  display: flex; justify-content: space-between; align-items: center;
 }
+.photo-caption-text { flex: 1; }
+.photo-comment-btn {
+  cursor: pointer; font-size: 12px; color: #94a3b8;
+  transition: color 0.2s; white-space: nowrap;
+}
+.photo-comment-btn:hover { color: #3b82f6; }
 
 /* 空状态 */
 .empty-photos {
