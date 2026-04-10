@@ -1,7 +1,7 @@
 <template>
   <div class="layout">
     <!-- 顶部导航 -->
-    <header class="header" :class="{ transparent: isHome && !scrolled }">
+    <header class="header">
       <div class="container header-inner">
         <div class="logo" @click="$router.push('/')">
           <span class="logo-text">别墅轰趴</span>
@@ -66,20 +66,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+import { useRouter } from 'vue-router';
 import { useUserStore } from '../store/user';
 
-const route = useRoute();
 const router = useRouter();
 const userStore = useUserStore();
-const scrolled = ref(false);
-
-const isHome = computed(() => route.path === '/');
-
-function onScroll() { scrolled.value = window.scrollY > 60; }
-onMounted(() => window.addEventListener('scroll', onScroll));
-onUnmounted(() => window.removeEventListener('scroll', onScroll));
 
 function handleCommand(cmd: string) {
   switch (cmd) {
@@ -107,23 +98,6 @@ function handleCommand(cmd: string) {
   position: sticky; top: 0; z-index: 100;
   transition: all 0.35s ease;
 }
-.header.transparent {
-  background: transparent;
-  box-shadow: none;
-}
-.header.transparent .logo-text { color: #fff; }
-.header.transparent .nav a { color: rgba(255,255,255,0.85); }
-.header.transparent .nav a:hover { color: #fff; }
-.header.transparent .nav a.router-link-exact-active { color: #fff; }
-.header.transparent .nav a.router-link-exact-active::after { background: #fff; }
-.header.transparent .login-btn {
-  border-color: rgba(255,255,255,0.6); color: #fff;
-}
-.header.transparent .login-btn:hover {
-  background: #fff; color: #ff6b35; border-color: #fff;
-}
-.header.transparent .user-info { color: #fff; }
-
 .header-inner {
   display: flex; align-items: center; justify-content: space-between;
   height: 68px;
