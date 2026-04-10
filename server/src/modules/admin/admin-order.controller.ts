@@ -59,16 +59,16 @@ export class AdminOrderController {
     return this.adminService.rejectOrder(ctx, id, reason);
   }
 
-  /** 标记已入住（2→3） */
-  @Post(':id/check-in')
-  async checkIn(@AdminCtx() ctx: AdminContext, @Param('id', ParseIntPipe) id: number) {
-    return this.adminService.markCheckedIn(ctx, id);
-  }
-
-  /** 确认尾款到账（3→4） */
+  /** 确认尾款到账（2→3） */
   @Post(':id/final-paid')
   async finalPaid(@AdminCtx() ctx: AdminContext, @Param('id', ParseIntPipe) id: number) {
     return this.adminService.confirmFinalPayment(ctx, id);
+  }
+
+  /** 标记已入住（3→4） */
+  @Post(':id/check-in')
+  async checkIn(@AdminCtx() ctx: AdminContext, @Param('id', ParseIntPipe) id: number) {
+    return this.adminService.markCheckedIn(ctx, id);
   }
 
   /** 手动完成（4→5） */

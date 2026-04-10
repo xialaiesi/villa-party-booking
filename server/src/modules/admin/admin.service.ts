@@ -291,20 +291,20 @@ export class AdminService {
     });
   }
 
-  /** 商家标记已入住（状态 2→3） */
-  async markCheckedIn(ctx: AdminContext, id: number) {
+  /** 商家确认尾款到账（状态 2→3） */
+  async confirmFinalPayment(ctx: AdminContext, id: number) {
     const order = await this.ensureOrderAccess(ctx, id);
-    if (order.status !== 2) throw new BadRequestException('仅已确认的订单可标记入住');
+    if (order.status !== 2) throw new BadRequestException('仅待付尾款的订单可确认');
     return this.prisma.order.update({
       where: { id },
       data: { status: 3 },
     });
   }
 
-  /** 商家确认尾款到账（状态 3→4） */
-  async confirmFinalPayment(ctx: AdminContext, id: number) {
+  /** 商家标记已入住（状态 3→4） */
+  async markCheckedIn(ctx: AdminContext, id: number) {
     const order = await this.ensureOrderAccess(ctx, id);
-    if (order.status !== 3) throw new BadRequestException('仅待付尾款的订单可确认');
+    if (order.status !== 3) throw new BadRequestException('仅已付全款的订单可标记入住');
     return this.prisma.order.update({
       where: { id },
       data: { status: 4 },
@@ -314,7 +314,7 @@ export class AdminService {
   /** 手动标记完成（状态 4→5） */
   async markCompleted(ctx: AdminContext, id: number) {
     const order = await this.ensureOrderAccess(ctx, id);
-    if (order.status !== 4) throw new BadRequestException('仅已付全款的订单可完成');
+    if (order.status !== 4) throw new BadRequestException('仅已入住的订单可完成');
     return this.prisma.order.update({
       where: { id },
       data: { status: 5 },

@@ -244,7 +244,7 @@ export class OrderService {
   async mockPayFinal(id: number, userId: number) {
     const order = await this.prisma.order.findFirst({ where: { id, userId } });
     if (!order) throw new NotFoundException('订单不存在');
-    if (order.status !== 3) throw new BadRequestException('当前状态无法支付尾款');
+    if (order.status !== 2) throw new BadRequestException('当前状态无法支付尾款');
     return { success: true, message: '尾款支付请求已提交，等待商家确认到账' };
   }
 

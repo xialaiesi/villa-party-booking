@@ -5,9 +5,9 @@
         <el-radio-button :value="''">全部</el-radio-button>
         <el-radio-button :value="0">待付定金</el-radio-button>
         <el-radio-button :value="1">已付定金</el-radio-button>
-        <el-radio-button :value="2">待入住</el-radio-button>
-        <el-radio-button :value="3">待付尾款</el-radio-button>
-        <el-radio-button :value="4">已付全款</el-radio-button>
+        <el-radio-button :value="2">待付尾款</el-radio-button>
+        <el-radio-button :value="3">待入住</el-radio-button>
+        <el-radio-button :value="4">已入住</el-radio-button>
         <el-radio-button :value="5">已完成</el-radio-button>
       </el-radio-group>
     </div>
@@ -40,8 +40,8 @@
             <span v-if="row.status === 0" class="action-link success" @click="doAction(confirmDepositPaid, row, '确认定金到账？')">确认定金</span>
             <span v-if="row.status === 1" class="action-link success" @click="doAction(confirmOrder, row, '确认该订单？')">确认订单</span>
             <span v-if="row.status === 1" class="action-link danger" @click="handleReject(row)">拒绝</span>
-            <span v-if="row.status === 2" class="action-link primary" @click="doAction(markCheckedIn, row, '确认客人已入住？')">标记入住</span>
-            <span v-if="row.status === 3" class="action-link success" @click="doAction(confirmFinalPayment, row, '确认尾款到账？')">确认尾款</span>
+            <span v-if="row.status === 2" class="action-link success" @click="doAction(confirmFinalPayment, row, '确认尾款到账？')">确认尾款</span>
+            <span v-if="row.status === 3" class="action-link primary" @click="doAction(markCheckedIn, row, '确认客人已入住？')">标记入住</span>
             <span v-if="row.status === 4" class="action-link primary" @click="doAction(markCompleted, row, '标记订单已完成？')">标记完成</span>
           </div>
         </template>
@@ -103,9 +103,9 @@ async function handleReject(row: any) {
 
 function fmtDate(d: string) { return d?.split('T')[0] || ''; }
 function statusLabel(s: number) {
-  return { 0: '待付定金', 1: '已付定金', 2: '待入住', 3: '待付尾款', 4: '已付全款', 5: '已完成', 6: '已取消', 7: '已拒绝', 8: '已关闭' }[s] || `${s}`;
+  return { 0: '待付定金', 1: '已付定金', 2: '待付尾款', 3: '待入住', 4: '已入住', 5: '已完成', 6: '已取消', 7: '已拒绝', 8: '已关闭' }[s] || `${s}`;
 }
 function statusType(s: number) {
-  return { 0: 'warning', 1: '', 2: 'success', 3: 'warning', 4: '', 5: 'info', 6: 'info', 7: 'danger', 8: 'info' }[s] || '';
+  return { 0: 'warning', 1: '', 2: 'warning', 3: 'success', 4: '', 5: 'info', 6: 'info', 7: 'danger', 8: 'info' }[s] || '';
 }
 </script>

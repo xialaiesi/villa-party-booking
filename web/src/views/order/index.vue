@@ -64,11 +64,11 @@ function goDetail(id: number) {
 }
 
 function statusText(s: number) {
-  return { 0: '待付定金', 1: '已付定金', 2: '待入住', 3: '待付尾款', 4: '已付全款', 5: '已完成', 6: '已取消', 7: '已拒绝', 8: '已关闭' }[s] || '';
+  return { 0: '待付定金', 1: '已付定金', 2: '待付尾款', 3: '待入住', 4: '已入住', 5: '已完成', 6: '已取消', 7: '已拒绝', 8: '已关闭' }[s] || '';
 }
 
 function statusType(s: number): any {
-  return { 0: 'warning', 1: '', 2: 'success', 3: 'warning', 4: '', 5: 'info', 6: 'info', 7: 'danger', 8: 'info' }[s] || '';
+  return { 0: 'warning', 1: '', 2: 'warning', 3: 'success', 4: '', 5: 'info', 6: 'info', 7: 'danger', 8: 'info' }[s] || '';
 }
 </script>
 

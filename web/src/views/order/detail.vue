@@ -58,16 +58,17 @@
         <el-button disabled size="large">等待商家确认...</el-button>
       </template>
 
-      <!-- 待入住 -->
+      <!-- 待付尾款 -->
       <template v-if="order.status === 2">
         <el-button size="large" @click="handleCancel">取消订单</el-button>
-      </template>
-
-      <!-- 待付尾款 -->
-      <template v-if="order.status === 3">
         <el-button type="primary" size="large" @click="handlePayFinal">
           支付尾款 ¥{{ finalAmount }}
         </el-button>
+      </template>
+
+      <!-- 待入住 -->
+      <template v-if="order.status === 3">
+        <span style="color: #67c23a; font-size: 16px; font-weight: 600;">费用已结清，请按时入住</span>
       </template>
     </div>
 
@@ -166,18 +167,18 @@ async function handleCancel() {
 function formatDate(d: string) { return new Date(d).toLocaleString(); }
 
 function statusIcon(s: number) {
-  return { 0: '💰', 1: '⏳', 2: '✅', 3: '🏠', 4: '💳', 5: '🎉' }[s] || '📦';
+  return { 0: '💰', 1: '⏳', 2: '💳', 3: '✅', 4: '🏠', 5: '🎉' }[s] || '📦';
 }
 function statusText(s: number) {
-  return { 0: '待付定金', 1: '已付定金', 2: '待入住', 3: '待付尾款', 4: '已付全款', 5: '已完成', 6: '已取消', 7: '已拒绝', 8: '已关闭' }[s] || '';
+  return { 0: '待付定金', 1: '已付定金', 2: '待付尾款', 3: '待入住', 4: '已入住', 5: '已完成', 6: '已取消', 7: '已拒绝', 8: '已关闭' }[s] || '';
 }
 function statusDesc(s: number) {
   return {
     0: '请支付定金以锁定日期',
     1: '等待商家确认到账',
-    2: '订单已确认，请按时入住',
-    3: '已入住，请支付剩余尾款',
-    4: '费用已结清，入住中',
+    2: '订单已确认，请支付尾款',
+    3: '费用已结清，请按时入住',
+    4: '祝您玩得开心！',
     5: '感谢您的入住，欢迎下次光临',
   }[s] || '';
 }
@@ -193,8 +194,8 @@ function statusDesc(s: number) {
   text-align: center; margin-bottom: 20px;
 }
 .status-card.status-1 { background: linear-gradient(135deg, #409eff, #53a8ff); }
-.status-card.status-2 { background: linear-gradient(135deg, #67c23a, #85ce61); }
-.status-card.status-3 { background: linear-gradient(135deg, #e6a23c, #f5c542); }
+.status-card.status-2 { background: linear-gradient(135deg, #e6a23c, #f5c542); }
+.status-card.status-3 { background: linear-gradient(135deg, #67c23a, #85ce61); }
 .status-card.status-4 { background: linear-gradient(135deg, #409eff, #53a8ff); }
 .status-card.status-5 { background: linear-gradient(135deg, #27ae60, #2ecc71); }
 .status-card.status-6, .status-card.status-7, .status-card.status-8 { background: linear-gradient(135deg, #909399, #b1b3b8); }

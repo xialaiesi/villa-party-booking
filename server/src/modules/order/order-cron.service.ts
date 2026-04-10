@@ -19,7 +19,7 @@ export class OrderCronService {
 
     const result = await this.prisma.order.updateMany({
       where: {
-        status: ORDER_STATUS.FULLY_PAID,
+        status: ORDER_STATUS.CHECKED_IN,
         checkOut: { lte: cutoff },
       },
       data: { status: ORDER_STATUS.COMPLETED },
