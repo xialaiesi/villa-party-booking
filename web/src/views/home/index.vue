@@ -1,10 +1,10 @@
 <template>
   <div>
     <!-- Hero 搜索区 -->
-    <div class="hero">
+    <div class="hero" :style="heroStyle">
       <div class="container">
-        <h1 class="hero-title">找到你的完美别墅趴场地</h1>
-        <p class="hero-subtitle">团建 · 生日 · 聚会 · 亲子 · 一站式解决</p>
+        <h1 class="hero-title">{{ siteConfig.hero_title || '找到你的完美别墅趴场地' }}</h1>
+        <p class="hero-subtitle">{{ siteConfig.hero_subtitle || '团建 · 生日 · 聚会 · 亲子 · 一站式解决' }}</p>
         <div class="search-box">
           <el-input
             v-model="keyword"
@@ -23,6 +23,18 @@
           </span>
         </div>
       </div>
+    </div>
+
+    <!-- 自定义轮播图 -->
+    <div class="container section" v-if="customBanners.length">
+      <el-carousel height="320px" :interval="5000" arrow="hover" indicator-position="outside">
+        <el-carousel-item v-for="(b, i) in customBanners" :key="i">
+          <div class="carousel-item" @click="handleBannerClick(b)">
+            <img :src="b.image" />
+            <div class="carousel-title" v-if="b.title">{{ b.title }}</div>
+          </div>
+        </el-carousel-item>
+      </el-carousel>
     </div>
 
     <!-- 限定活动 Banner -->
@@ -57,9 +69,7 @@
             <div class="villa-name">{{ v.name }}</div>
             <div class="villa-address">📍 {{ v.address }}</div>
             <div class="villa-tags">
-              <span class="tag" v-for="t in (v.tags || '').split(',').filter(Boolean)" :key="t">
-                {{ t }}
-              </span>
+              <span class="tag" v-for="t in (v.tags || '').split(',').filter(Boolean)" :key="t">{{ t }}</span>
             </div>
             <div class="villa-footer">
               <div class="villa-price">
@@ -90,14 +100,19 @@
         </div>
       </div>
     </div>
+
+    <!-- 页脚 -->
+    <div class="footer" v-if="siteConfig.footer_text">
+      <div class="container">{{ siteConfig.footer_text }}</div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, reactive, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { Search } from '@element-plus/icons-vue';
-import { getHome } from '../../api/villa';
+import { getHome, getSiteConfig } from '../../api/villa';
 import { thumbUrl } from '../../utils/request';
 
 const router = useRouter();
@@ -107,16 +122,51 @@ const villas = ref<any[]>([]);
 const groupBuys = ref<any[]>([]);
 const resolveImg = thumbUrl;
 
-const scenes = ['团建聚会', '生日派对', '朋友聚会', '亲子活动', '毕业趴', '闺蜜趴'];
+const siteConfig = reactive<Record<string, string>>({
+  hero_title: '',
+  hero_subtitle: '',
+  hero_bg: '',
+  hero_image: '',
+  banners: '[]',
+  scene_tags: '[]',
+  footer_text: '',
+});
+
+const scenes = computed(() => {
+  try { return JSON.parse(siteConfig.scene_tags || '[]'); }
+  catch { return ['团建聚会', '生日派对', '朋友聚会', '亲子活动', '毕业趴', '闺蜜趴']; }
+});
+
+const customBanners = computed(() => {
+  try {
+    const list = JSON.parse(siteConfig.banners || '[]');
+    return list.filter((b: any) => b.image);
+  } catch { return []; }
+});
+
+const heroStyle = computed(() => {
+  if (siteConfig.hero_image) {
+    return {
+      backgroundImage: `linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.3)), url(${siteConfig.hero_image})`,
+      backgroundSize: 'cover',
+      backgroundPosition: 'center',
+    };
+  }
+  return { background: siteConfig.hero_bg || 'linear-gradient(135deg, #ff6b35, #ff8f65)' };
+});
 
 onMounted(async () => {
-  try {
-    const data: any = await getHome();
+  // 并行加载站点配置和首页数据
+  const [configData, homeData] = await Promise.allSettled([
+    getSiteConfig(),
+    getHome(),
+  ]);
+  if (configData.status === 'fulfilled') Object.assign(siteConfig, configData.value as any);
+  if (homeData.status === 'fulfilled') {
+    const data = homeData.value as any;
     banners.value = data.banners || [];
     villas.value = data.villas || [];
     groupBuys.value = data.groupBuys || [];
-  } catch (e) {
-    console.error(e);
   }
 });
 
@@ -127,13 +177,9 @@ function goSearch(tag?: any) {
   router.push({ path: '/search', query: params });
 }
 
-function goDetail(id: number) {
-  router.push(`/villa/${id}`);
-}
-
-function goBanner(b: any) {
-  if (b.villaId) goDetail(b.villaId);
-}
+function goDetail(id: number) { router.push(`/villa/${id}`); }
+function goBanner(b: any) { if (b.villaId) goDetail(b.villaId); }
+function handleBannerClick(b: any) { if (b.link) window.open(b.link, '_blank'); }
 </script>
 
 <style scoped>
@@ -144,18 +190,14 @@ function goBanner(b: any) {
 }
 .hero-title {
   font-size: 44px; font-weight: bold; text-align: center;
-  margin-bottom: 16px;
+  margin-bottom: 16px; text-shadow: 0 2px 8px rgba(0,0,0,0.15);
 }
 .hero-subtitle {
   font-size: 20px; text-align: center; opacity: 0.9;
   margin-bottom: 40px;
 }
-.search-box {
-  display: flex; gap: 12px; max-width: 700px; margin: 0 auto;
-}
-.search-input {
-  background: #fff; border-radius: 8px;
-}
+.search-box { display: flex; gap: 12px; max-width: 700px; margin: 0 auto; }
+.search-input { background: #fff; border-radius: 8px; }
 .scene-tags {
   display: flex; justify-content: center; gap: 12px;
   margin-top: 24px; flex-wrap: wrap;
@@ -164,9 +206,19 @@ function goBanner(b: any) {
   background: rgba(255, 255, 255, 0.2); color: #fff;
   padding: 8px 20px; border-radius: 24px; font-size: 14px;
   cursor: pointer; transition: all 0.2s;
+  backdrop-filter: blur(4px);
 }
-.scene-tags .tag:hover {
-  background: #fff; color: #ff6b35;
+.scene-tags .tag:hover { background: #fff; color: #ff6b35; }
+
+/* 轮播图 */
+.carousel-item {
+  position: relative; height: 100%; cursor: pointer; border-radius: 12px; overflow: hidden;
+}
+.carousel-item img { width: 100%; height: 100%; object-fit: cover; }
+.carousel-title {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  padding: 16px 24px; color: #fff; font-size: 18px; font-weight: 600;
+  background: linear-gradient(transparent, rgba(0,0,0,0.6));
 }
 
 .section { margin: 60px auto; }
@@ -177,9 +229,7 @@ function goBanner(b: any) {
 .section-header h2 { font-size: 26px; color: #333; }
 .more-link { color: #ff6b35; font-size: 14px; }
 
-.banner-grid {
-  display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px;
-}
+.banner-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
 .banner-card {
   position: relative; border-radius: 12px; overflow: hidden;
   cursor: pointer; transition: transform 0.2s; height: 200px;
@@ -194,9 +244,7 @@ function goBanner(b: any) {
 .banner-name { font-size: 20px; font-weight: bold; }
 .banner-tag { color: #ffd700; font-size: 14px; margin-top: 6px; }
 
-.villa-grid {
-  display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px;
-}
+.villa-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
 .villa-card {
   background: #fff; border-radius: 12px; overflow: hidden;
   cursor: pointer; transition: all 0.2s;
@@ -229,9 +277,7 @@ function goBanner(b: any) {
 .villa-price .unit { font-size: 12px; color: #999; margin-left: 4px; }
 .villa-guests { font-size: 13px; color: #666; }
 
-.group-grid {
-  display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px;
-}
+.group-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
 .group-card {
   background: #fff; border-radius: 12px; overflow: hidden;
   box-shadow: 0 2px 8px rgba(0,0,0,0.06);
@@ -244,4 +290,9 @@ function goBanner(b: any) {
 }
 .group-discount { color: #ff6b35; font-size: 16px; font-weight: bold; margin-top: 6px; }
 .group-progress { font-size: 12px; color: #999; margin-top: 4px; }
+
+.footer {
+  text-align: center; padding: 32px 0; color: #999; font-size: 13px;
+  border-top: 1px solid #f0f0f0; margin-top: 60px;
+}
 </style>

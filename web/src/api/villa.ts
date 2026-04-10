@@ -23,3 +23,7 @@ export function listFacilities() {
 export function getHome() {
   return request.get('/api/home');
 }
+
+export function getSiteConfig() {
+  return request.get('/api/site-config');
+}

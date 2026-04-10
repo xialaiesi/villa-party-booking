@@ -1,5 +1,25 @@
 /* ===== 全局通用样式 ===== */
 
+/* ---------- Element Plus 覆写 ---------- */
+
+/* 表格圆角 + 去默认边框 */
+.el-table { border-radius: 8px; overflow: hidden; }
+.el-table th.el-table__cell { background: #f8f9fc !important; color: #606266; font-weight: 600; font-size: 13px; }
+
+/* Tab 页签美化 */
+.el-tabs--border-card { border-radius: 8px; border: 1px solid #ebeef5; box-shadow: none; }
+.el-tabs__header { background: #f8f9fc; border-radius: 8px 8px 0 0; }
+
+/* 弹窗圆角 */
+.el-dialog { border-radius: 12px !important; }
+.el-dialog__header { border-bottom: 1px solid #f0f0f0; padding-bottom: 16px; }
+
+/* 分页器间距 */
+.el-pagination { margin-top: 20px; justify-content: flex-end; }
+
+/* Tag 样式 */
+.el-tag { border-radius: 6px; }
+
 /* 操作列链接式按钮 */
 .action-btns {
   display: flex;

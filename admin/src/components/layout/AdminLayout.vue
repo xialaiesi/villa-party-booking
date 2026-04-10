@@ -67,10 +67,11 @@
     </el-aside>
     <el-container>
       <el-header class="header">
-        <span>{{ route.meta.title }}</span>
+        <span class="header-title">{{ route.meta.title }}</span>
         <div class="header-right">
+          <div class="user-avatar">{{ (userStore.info?.nickname || userStore.info?.username || 'A').charAt(0) }}</div>
           <span class="user-name">{{ userStore.info?.nickname || userStore.info?.username }}</span>
-          <el-button text @click="handleLogout">退出登录</el-button>
+          <span class="logout-link" @click="handleLogout">退出</span>
         </div>
       </el-header>
       <el-main class="main">
@@ -107,16 +108,45 @@ function handleLogout() {
 
 <style scoped>
 .layout { height: 100vh; }
-.aside { background: #304156; overflow-y: auto; }
-.logo { color: #fff; text-align: center; padding: 20px 0; border-bottom: 1px solid #3a4a5e; }
-.logo > div:first-child { font-size: 18px; font-weight: bold; }
-.role-tag { font-size: 11px; color: #8ba0b4; margin-top: 4px; }
-.menu { border-right: none; background: #304156; }
-.menu .el-menu-item { color: #bfcbd9; }
-.menu .el-menu-item:hover { background: #263445; }
-.menu .el-menu-item.is-active { background: #1890ff; color: #fff; }
-.header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; background: #fff; }
-.header-right { display: flex; align-items: center; gap: 16px; }
-.user-name { color: #606266; font-size: 14px; }
-.main { background: #f0f2f5; }
+.aside { background: #1e293b; overflow-y: auto; }
+.aside::-webkit-scrollbar { width: 0; }
+.logo {
+  color: #fff; text-align: center; padding: 24px 0 20px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+.logo > div:first-child { font-size: 18px; font-weight: bold; letter-spacing: 2px; }
+.role-tag {
+  display: inline-block; font-size: 10px; color: #94a3b8; margin-top: 6px;
+  background: rgba(255,255,255,0.08); padding: 2px 10px; border-radius: 10px;
+}
+.menu { border-right: none; background: #1e293b; }
+.menu .el-menu-item {
+  color: #94a3b8; margin: 2px 8px; border-radius: 8px;
+  height: 44px; line-height: 44px; font-size: 14px;
+}
+.menu .el-menu-item:hover { background: rgba(255,255,255,0.06); color: #e2e8f0; }
+.menu .el-menu-item.is-active {
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  color: #fff; font-weight: 600;
+}
+.header {
+  display: flex; justify-content: space-between; align-items: center;
+  border-bottom: 1px solid #f0f0f0; background: #fff;
+  padding: 0 24px; height: 56px;
+}
+.header-title { font-size: 16px; font-weight: 600; color: #1e293b; }
+.header-right { display: flex; align-items: center; gap: 12px; }
+.user-avatar {
+  width: 32px; height: 32px; border-radius: 50%;
+  background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+  color: #fff; font-size: 14px; font-weight: 600;
+  display: flex; align-items: center; justify-content: center;
+}
+.user-name { color: #475569; font-size: 14px; }
+.logout-link {
+  color: #94a3b8; font-size: 13px; cursor: pointer;
+  padding: 4px 10px; border-radius: 6px; transition: all 0.2s;
+}
+.logout-link:hover { color: #ef4444; background: #fef2f2; }
+.main { background: #f1f5f9; padding: 24px; }
 </style>
