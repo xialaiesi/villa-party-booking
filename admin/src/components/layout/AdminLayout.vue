@@ -57,6 +57,10 @@
           <el-icon><Star /></el-icon>
           <span>限定活动</span>
         </el-menu-item>
+        <el-menu-item index="/album">
+          <el-icon><PictureFilled /></el-icon>
+          <span>共享相册</span>
+        </el-menu-item>
 
         <!-- 财务中心 -->
         <el-menu-item index="/finance">
@@ -86,7 +90,7 @@ import { computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import {
   DataAnalysis, House, Calendar, ShoppingBag, Document, Setting,
-  List, Present, Service, Star, OfficeBuilding, Money, Brush,
+  List, Present, Service, Star, OfficeBuilding, Money, Brush, PictureFilled,
 } from '@element-plus/icons-vue';
 import { useUserStore } from '../../store/user';
 

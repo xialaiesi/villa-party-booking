@@ -47,6 +47,7 @@
           <el-input-number v-model="form.maxGuests" :min="1" />
         </el-form-item>
         <el-form-item label="时长"><el-input v-model="form.duration" placeholder="如：4小时、全天" /></el-form-item>
+        <el-form-item label="封面图"><ImageUpload v-model="form.coverImage" /></el-form-item>
         <el-form-item label="描述"><el-input v-model="form.description" type="textarea" :rows="3" /></el-form-item>
 
         <!-- 活动环节 -->
@@ -76,6 +77,7 @@
 import { ref, reactive, onMounted } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { getPlans, createPlan, updatePlan, deletePlan } from '../../api/activity-plan';
+import ImageUpload from '../../components/ImageUpload.vue';
 
 const planList = ref<any[]>([]);
 const dialogVisible = ref(false);
@@ -88,6 +90,7 @@ const form = reactive({
   maxGuests: 20,
   duration: '',
   description: '',
+  coverImage: '',
   steps: [] as { time: string; title: string; content: string; tips: string }[],
 });
 
@@ -100,7 +103,7 @@ async function loadData() {
 
 function openDialog() {
   editingId.value = null;
-  Object.assign(form, { name: '', scene: '团建', minGuests: 5, maxGuests: 20, duration: '', description: '', steps: [] });
+  Object.assign(form, { name: '', scene: '团建', minGuests: 5, maxGuests: 20, duration: '', description: '', coverImage: '', steps: [] });
   dialogVisible.value = true;
 }
 
@@ -113,6 +116,7 @@ function handleEdit(row: any) {
     maxGuests: row.maxGuests,
     duration: row.duration,
     description: row.description,
+    coverImage: row.coverImage || '',
     steps: row.steps?.map((s: any) => ({ time: s.time || '', title: s.title, content: s.content || '', tips: s.tips || '' })) || [],
   });
   dialogVisible.value = true;

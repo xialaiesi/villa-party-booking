@@ -28,6 +28,7 @@
         <el-form-item label="价格"><el-input-number v-model="form.price" :min="0" :precision="2" /></el-form-item>
         <el-form-item label="单位"><el-input v-model="form.unit" placeholder="次/小时/天" /></el-form-item>
         <el-form-item label="服务商"><el-input v-model="form.provider" /></el-form-item>
+        <el-form-item label="封面图"><ImageUpload v-model="form.coverImage" /></el-form-item>
         <el-form-item label="描述"><el-input v-model="form.description" type="textarea" :rows="2" /></el-form-item>
       </el-form>
       <template #footer>
@@ -42,15 +43,16 @@
 import { ref, reactive, onMounted } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { getServices, createService, updateService, deleteService } from '../../api/local-service';
+import ImageUpload from '../../components/ImageUpload.vue';
 
 const list = ref<any[]>([]);
 const dialogVisible = ref(false);
 const editingId = ref<number | null>(null);
-const form = reactive({ name: '', category: '厨师', price: 0, unit: '次', provider: '', description: '' });
+const form = reactive({ name: '', category: '厨师', price: 0, unit: '次', provider: '', coverImage: '', description: '' });
 
 onMounted(async () => { const res: any = await getServices({ page: 1, pageSize: 50 }); list.value = res.list; });
 
-function openDialog() { editingId.value = null; Object.assign(form, { name: '', category: '厨师', price: 0, unit: '次', provider: '', description: '' }); dialogVisible.value = true; }
+function openDialog() { editingId.value = null; Object.assign(form, { name: '', category: '厨师', price: 0, unit: '次', provider: '', coverImage: '', description: '' }); dialogVisible.value = true; }
 function handleEdit(row: any) { editingId.value = row.id; Object.assign(form, row); dialogVisible.value = true; }
 async function handleSubmit() {
   if (editingId.value) { await updateService(editingId.value, { ...form }); ElMessage.success('更新成功'); }

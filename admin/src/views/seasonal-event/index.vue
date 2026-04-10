@@ -35,6 +35,7 @@
         <el-form-item label="结束日期"><el-date-picker v-model="form.endDate" type="date" /></el-form-item>
         <el-form-item label="限量"><el-input-number v-model="form.quota" :min="0" /></el-form-item>
         <el-form-item label="优惠金额"><el-input-number v-model="form.discount" :min="0" :precision="2" /></el-form-item>
+        <el-form-item label="封面图"><ImageUpload v-model="form.coverImage" /></el-form-item>
         <el-form-item label="描述"><el-input v-model="form.description" type="textarea" :rows="2" /></el-form-item>
       </el-form>
       <template #footer>
@@ -49,15 +50,16 @@
 import { ref, reactive, onMounted } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { getEvents, createEvent, updateEvent, deleteEvent } from '../../api/seasonal-event';
+import ImageUpload from '../../components/ImageUpload.vue';
 
 const list = ref<any[]>([]);
 const dialogVisible = ref(false);
 const editingId = ref<number | null>(null);
-const form = reactive({ name: '', season: 'summer', startDate: '', endDate: '', quota: 0, discount: 0, description: '' });
+const form = reactive({ name: '', season: 'summer', startDate: '', endDate: '', quota: 0, discount: 0, coverImage: '', description: '' });
 
 onMounted(async () => { const res: any = await getEvents({ page: 1, pageSize: 50 }); list.value = res.list; });
 
-function openDialog() { editingId.value = null; Object.assign(form, { name: '', season: 'summer', startDate: '', endDate: '', quota: 0, discount: 0, description: '' }); dialogVisible.value = true; }
+function openDialog() { editingId.value = null; Object.assign(form, { name: '', season: 'summer', startDate: '', endDate: '', quota: 0, discount: 0, coverImage: '', description: '' }); dialogVisible.value = true; }
 function handleEdit(row: any) { editingId.value = row.id; Object.assign(form, row); dialogVisible.value = true; }
 async function handleSubmit() {
   if (editingId.value) { await updateEvent(editingId.value, { ...form }); ElMessage.success('更新成功'); }

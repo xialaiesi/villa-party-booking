@@ -147,6 +147,59 @@ export class AlbumService {
     }));
   }
 
+  /** 管理后台：获取商家下所有相册 */
+  async findAll(merchantId?: number, page = 1, pageSize = 20) {
+    const where: any = {};
+    if (merchantId) {
+      where.order = { villa: { merchantId } };
+    }
+
+    const [list, total] = await Promise.all([
+      this.prisma.album.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+        include: {
+          order: {
+            select: {
+              orderNo: true,
+              villa: { select: { name: true, coverImage: true, merchantId: true } },
+              checkIn: true,
+              checkOut: true,
+            },
+          },
+          creator: { select: { nickname: true, avatar: true } },
+          _count: { select: { photos: true } },
+        },
+      }),
+      this.prisma.album.count({ where }),
+    ]);
+
+    return {
+      list: list.map((a: any) => ({
+        ...this.formatAlbum(a),
+        photoCount: a._count?.photos || 0,
+        villaName: a.order?.villa?.name,
+        coverImage: a.order?.villa?.coverImage,
+        orderNo: a.order?.orderNo,
+        creator: a.creator,
+      })),
+      total,
+      page,
+      pageSize,
+    };
+  }
+
+  /** 管理后台：关闭/开启相册 */
+  async updateStatus(id: number, status: number) {
+    await this.prisma.album.update({
+      where: { id },
+      data: { status },
+    });
+    return { success: true };
+  }
+
   private formatAlbum(album: any) {
     return {
       ...album,

@@ -22,6 +22,7 @@ const routes = [
       { path: 'theme-pack', component: () => import('../views/theme-pack/index.vue'), meta: { title: '氛围包' } },
       { path: 'local-service', component: () => import('../views/local-service/index.vue'), meta: { title: '周边服务' } },
       { path: 'seasonal-event', component: () => import('../views/seasonal-event/index.vue'), meta: { title: '限定活动' } },
+      { path: 'album', component: () => import('../views/album/index.vue'), meta: { title: '共享相册' } },
       { path: 'merchant', component: () => import('../views/merchant/index.vue'), meta: { title: '商家管理' } },
       { path: 'finance', component: () => import('../views/finance/index.vue'), meta: { title: '财务中心' } },
     ],

@@ -42,6 +42,7 @@
         </el-form-item>
         <el-form-item label="打包价"><el-input-number v-model="form.price" :min="0" :precision="2" /></el-form-item>
         <el-form-item label="原价"><el-input-number v-model="form.originalPrice" :min="0" :precision="2" /></el-form-item>
+        <el-form-item label="封面图"><ImageUpload v-model="form.coverImage" /></el-form-item>
         <el-form-item label="描述"><el-input v-model="form.description" type="textarea" :rows="2" /></el-form-item>
         <el-form-item label="包含物品">
           <div style="width: 100%;">
@@ -65,12 +66,13 @@
 import { ref, reactive, onMounted } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { getThemePacks, createThemePack, updateThemePack, deleteThemePack } from '../../api/theme-pack';
+import ImageUpload from '../../components/ImageUpload.vue';
 
 const packList = ref<any[]>([]);
 const dialogVisible = ref(false);
 const editingId = ref<number | null>(null);
 const form = reactive({
-  name: '', theme: '派对', price: 0, originalPrice: 0, description: '',
+  name: '', theme: '派对', price: 0, originalPrice: 0, description: '', coverImage: '',
   items: [] as string[],
 });
 
@@ -83,7 +85,7 @@ async function loadData() {
 
 function openDialog() {
   editingId.value = null;
-  Object.assign(form, { name: '', theme: '派对', price: 0, originalPrice: 0, description: '', items: [] });
+  Object.assign(form, { name: '', theme: '派对', price: 0, originalPrice: 0, description: '', coverImage: '', items: [] });
   dialogVisible.value = true;
 }
 
