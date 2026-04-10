@@ -15,3 +15,11 @@ export function getOrder(id: number) {
 export function cancelOrder(id: number, reason?: string) {
   return request.post(`/api/orders/${id}/cancel`, { reason });
 }
+
+export function payDeposit(id: number) {
+  return request.post(`/api/orders/${id}/pay-deposit`);
+}
+
+export function payFinal(id: number) {
+  return request.post(`/api/orders/${id}/pay-final`);
+}

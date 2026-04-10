@@ -25,10 +25,10 @@
       <div class="fee-item" v-if="order.discountAmount > 0">
         <span>连住折扣</span><span class="discount">-¥{{ order.discountAmount }}</span>
       </div>
-      <div class="fee-item total"><span>订单金额</span><span>¥{{ order.totalAmount }}</span></div>
-      <div class="fee-item" v-if="order.depositAmount > 0">
-        <span>押金</span><span>¥{{ order.depositAmount }}</span>
-      </div>
+      <div class="fee-item"><span>订单总额</span><span style="font-weight: 600;">¥{{ order.totalAmount }}</span></div>
+      <div class="fee-divider" />
+      <div class="fee-item"><span>定金</span><span>¥{{ order.depositAmount }}</span></div>
+      <div class="fee-item"><span>尾款（入住后支付）</span><span>¥{{ finalAmount }}</span></div>
     </div>
 
     <div class="card" v-if="order.contactName">
@@ -42,29 +42,118 @@
       <div class="info-row"><span class="label">下单时间：</span>{{ formatDate(order.createdAt) }}</div>
     </div>
 
-    <div class="action-bar" v-if="order.status === 0">
-      <el-button size="large" @click="handleCancel">取消订单</el-button>
-      <el-button type="primary" size="large">
-        去支付 ¥{{ (Number(order.totalAmount) + Number(order.depositAmount)).toFixed(2) }}
-      </el-button>
+    <!-- 操作按钮 -->
+    <div class="action-bar">
+      <!-- 待付定金 -->
+      <template v-if="order.status === 0">
+        <el-button size="large" @click="handleCancel">取消订单</el-button>
+        <el-button type="primary" size="large" @click="handlePayDeposit">
+          支付定金 ¥{{ order.depositAmount }}
+        </el-button>
+      </template>
+
+      <!-- 已付定金，等待商家确认 -->
+      <template v-if="order.status === 1">
+        <el-button size="large" @click="handleCancel">取消订单</el-button>
+        <el-button disabled size="large">等待商家确认...</el-button>
+      </template>
+
+      <!-- 待入住 -->
+      <template v-if="order.status === 2">
+        <el-button size="large" @click="handleCancel">取消订单</el-button>
+      </template>
+
+      <!-- 待付尾款 -->
+      <template v-if="order.status === 3">
+        <el-button type="primary" size="large" @click="handlePayFinal">
+          支付尾款 ¥{{ finalAmount }}
+        </el-button>
+      </template>
     </div>
+
+    <!-- Mock 支付弹窗 -->
+    <el-dialog v-model="payDialogVisible" :title="payType === 'deposit' ? '支付定金' : '支付尾款'" width="400px" center>
+      <div class="pay-dialog">
+        <div class="pay-amount">
+          ¥{{ payType === 'deposit' ? order.depositAmount : finalAmount }}
+        </div>
+        <div class="pay-hint">请通过以下方式向商家转账</div>
+        <div class="pay-methods">
+          <div class="pay-method" @click="confirmPay('wechat')">
+            <span class="method-icon" style="color: #07c160;">微信</span>
+            <span>微信转账</span>
+          </div>
+          <div class="pay-method" @click="confirmPay('alipay')">
+            <span class="method-icon" style="color: #1677ff;">支付宝</span>
+            <span>支付宝转账</span>
+          </div>
+          <div class="pay-method" @click="confirmPay('bank')">
+            <span class="method-icon" style="color: #e6a23c;">银行</span>
+            <span>银行卡转账</span>
+          </div>
+        </div>
+        <div class="pay-note">转账完成后，商家会在后台确认到账，届时订单状态将自动更新</div>
+      </div>
+    </el-dialog>
+
+    <!-- 支付成功提示 -->
+    <el-dialog v-model="paySuccessVisible" title="" width="360px" center>
+      <div class="pay-success">
+        <div class="success-icon">✅</div>
+        <h3>{{ payType === 'deposit' ? '定金' : '尾款' }}支付请求已提交</h3>
+        <p>请等待商家确认到账，确认后订单状态会自动更新</p>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
-import { getOrder, cancelOrder } from '../../api/order';
+import { getOrder, cancelOrder, payDeposit, payFinal } from '../../api/order';
 
 const route = useRoute();
 const order = ref<any>(null);
+const payDialogVisible = ref(false);
+const paySuccessVisible = ref(false);
+const payType = ref<'deposit' | 'final'>('deposit');
+
+const finalAmount = computed(() => {
+  if (!order.value) return 0;
+  return (Number(order.value.totalAmount) - Number(order.value.depositAmount)).toFixed(2);
+});
 
 onMounted(() => load());
 
 async function load() {
   const id = parseInt(route.params.id as string);
   order.value = await getOrder(id);
+}
+
+function handlePayDeposit() {
+  payType.value = 'deposit';
+  payDialogVisible.value = true;
+}
+
+function handlePayFinal() {
+  payType.value = 'final';
+  payDialogVisible.value = true;
+}
+
+async function confirmPay(_method: string) {
+  payDialogVisible.value = false;
+  try {
+    if (payType.value === 'deposit') {
+      await payDeposit(order.value.id);
+    } else {
+      await payFinal(order.value.id);
+    }
+    paySuccessVisible.value = true;
+    load();
+  } catch (e: any) {
+    ElMessage.error(e.message || '操作失败');
+  }
 }
 
 async function handleCancel() {
@@ -74,67 +163,82 @@ async function handleCancel() {
   load();
 }
 
-function formatDate(d: string) {
-  return new Date(d).toLocaleString();
-}
+function formatDate(d: string) { return new Date(d).toLocaleString(); }
 
 function statusIcon(s: number) {
-  return { 0: '⏳', 1: '💳', 2: '✅', 3: '🏠', 4: '💎', 5: '🎉' }[s] || '📦';
+  return { 0: '💰', 1: '⏳', 2: '✅', 3: '🏠', 4: '💳', 5: '🎉' }[s] || '📦';
 }
-
 function statusText(s: number) {
-  return { 0: '待支付', 1: '待商家确认', 2: '待入住', 3: '已入住', 4: '待退押金', 5: '已完成', 6: '已取消', 7: '已拒绝', 8: '已关闭' }[s] || '';
+  return { 0: '待付定金', 1: '已付定金', 2: '待入住', 3: '待付尾款', 4: '已付全款', 5: '已完成', 6: '已取消', 7: '已拒绝', 8: '已关闭' }[s] || '';
 }
-
 function statusDesc(s: number) {
   return {
-    0: '请尽快完成支付',
-    1: '商家正在处理，请耐心等待',
-    2: '请按时入住',
-    3: '祝你玩得开心！',
-    4: '商家正在验收，押金将很快退还',
-    5: '感谢您的入住',
+    0: '请支付定金以锁定日期',
+    1: '等待商家确认到账',
+    2: '订单已确认，请按时入住',
+    3: '已入住，请支付剩余尾款',
+    4: '费用已结清，入住中',
+    5: '感谢您的入住，欢迎下次光临',
   }[s] || '';
 }
 </script>
 
 <style scoped>
 .order-detail { padding: 30px 0 60px; max-width: 900px; }
-.page-title { font-size: 24px; color: #333; margin-bottom: 20px; }
+.page-title { font-size: 24px; color: #1e293b; margin-bottom: 20px; font-weight: 700; }
 
 .status-card {
-  background: linear-gradient(135deg, #ff6b35, #ff8f65);
-  padding: 40px; border-radius: 12px; color: #fff;
+  background: linear-gradient(135deg, #e6a23c, #f5c542);
+  padding: 40px; border-radius: 14px; color: #fff;
   text-align: center; margin-bottom: 20px;
 }
+.status-card.status-1 { background: linear-gradient(135deg, #409eff, #53a8ff); }
+.status-card.status-2 { background: linear-gradient(135deg, #67c23a, #85ce61); }
+.status-card.status-3 { background: linear-gradient(135deg, #e6a23c, #f5c542); }
+.status-card.status-4 { background: linear-gradient(135deg, #409eff, #53a8ff); }
 .status-card.status-5 { background: linear-gradient(135deg, #27ae60, #2ecc71); }
+.status-card.status-6, .status-card.status-7, .status-card.status-8 { background: linear-gradient(135deg, #909399, #b1b3b8); }
 .status-icon { font-size: 48px; }
-.status-text { font-size: 24px; font-weight: bold; margin-top: 8px; }
+.status-text { font-size: 24px; font-weight: 700; margin-top: 8px; }
 .status-desc { font-size: 14px; opacity: 0.9; margin-top: 6px; }
 
-.card {
-  background: #fff; padding: 30px; border-radius: 12px; margin-bottom: 16px;
-}
-.card h3 { font-size: 16px; margin-bottom: 16px; color: #333; }
-.villa-name { font-size: 16px; color: #333; }
-.date-info, .guest-info { font-size: 14px; color: #666; margin-top: 6px; }
+.card { background: #fff; padding: 24px; border-radius: 12px; margin-bottom: 16px; }
+.card h3 { font-size: 16px; margin-bottom: 16px; color: #1e293b; font-weight: 600; }
+.villa-name { font-size: 16px; color: #1e293b; font-weight: 600; }
+.date-info, .guest-info { font-size: 14px; color: #64748b; margin-top: 6px; }
 
-.fee-item {
-  display: flex; justify-content: space-between;
-  padding: 10px 0; font-size: 14px; color: #666;
-}
-.fee-item.total {
-  border-top: 1px solid #f5f5f5; padding-top: 16px;
-  margin-top: 8px; font-weight: bold; color: #333;
-}
+.fee-item { display: flex; justify-content: space-between; padding: 10px 0; font-size: 14px; color: #64748b; }
+.fee-divider { border-top: 1px dashed #e2e8f0; margin: 8px 0; }
 .discount { color: #27ae60; }
-
-.info-row { padding: 6px 0; font-size: 14px; color: #666; }
-.label { color: #999; }
+.info-row { padding: 6px 0; font-size: 14px; color: #64748b; }
+.label { color: #94a3b8; }
 
 .action-bar {
   display: flex; gap: 12px; padding: 20px;
   background: #fff; border-radius: 12px;
   justify-content: flex-end;
+}
+
+/* Mock 支付弹窗 */
+.pay-dialog { text-align: center; }
+.pay-amount { font-size: 36px; font-weight: 800; color: #ff6b35; margin: 16px 0; }
+.pay-hint { font-size: 14px; color: #94a3b8; margin-bottom: 20px; }
+.pay-methods { display: flex; gap: 16px; justify-content: center; margin-bottom: 20px; }
+.pay-method {
+  padding: 16px 24px; border-radius: 12px; border: 1px solid #e2e8f0;
+  cursor: pointer; transition: all 0.2s; display: flex; flex-direction: column; align-items: center; gap: 6px;
+}
+.pay-method:hover { border-color: #409eff; background: #f0f7ff; }
+.method-icon { font-size: 18px; font-weight: 700; }
+.pay-note { font-size: 12px; color: #94a3b8; line-height: 1.6; }
+
+.pay-success { text-align: center; padding: 20px 0; }
+.success-icon { font-size: 48px; }
+.pay-success h3 { font-size: 18px; color: #1e293b; margin: 12px 0 8px; }
+.pay-success p { font-size: 14px; color: #94a3b8; }
+
+@media (max-width: 768px) {
+  .action-bar { flex-direction: column; }
+  .pay-methods { flex-direction: column; gap: 10px; }
 }
 </style>

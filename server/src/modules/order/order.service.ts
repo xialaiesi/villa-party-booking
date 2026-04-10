@@ -225,6 +225,23 @@ export class OrderService {
     }
   }
 
+  /** Mock 支付定金：记录支付意向，等商家确认 */
+  async mockPayDeposit(id: number, userId: number) {
+    const order = await this.prisma.order.findFirst({ where: { id, userId } });
+    if (!order) throw new NotFoundException('订单不存在');
+    if (order.status !== 0) throw new BadRequestException('当前状态无法支付定金');
+    // Mock：不真正收款，返回"等待确认"
+    return { success: true, message: '定金支付请求已提交，等待商家确认到账' };
+  }
+
+  /** Mock 支付尾款：记录支付意向，等商家确认 */
+  async mockPayFinal(id: number, userId: number) {
+    const order = await this.prisma.order.findFirst({ where: { id, userId } });
+    if (!order) throw new NotFoundException('订单不存在');
+    if (order.status !== 3) throw new BadRequestException('当前状态无法支付尾款');
+    return { success: true, message: '尾款支付请求已提交，等待商家确认到账' };
+  }
+
   private generateOrderNo(): string {
     const now = new Date();
     const date = now.toISOString().replace(/[-T:.Z]/g, '').slice(0, 14);

@@ -4,7 +4,7 @@
 
     <el-tabs v-model="activeTab" @tab-change="loadData">
       <el-tab-pane label="全部" name="" />
-      <el-tab-pane label="待支付" name="0" />
+      <el-tab-pane label="待付定金" name="0" />
       <el-tab-pane label="进行中" name="ongoing" />
       <el-tab-pane label="已完成" name="5" />
     </el-tabs>
@@ -64,11 +64,11 @@ function goDetail(id: number) {
 }
 
 function statusText(s: number) {
-  return { 0: '待支付', 1: '待确认', 2: '待入住', 3: '已入住', 4: '待退押金', 5: '已完成', 6: '已取消', 7: '已拒绝', 8: '已关闭' }[s] || '';
+  return { 0: '待付定金', 1: '已付定金', 2: '待入住', 3: '待付尾款', 4: '已付全款', 5: '已完成', 6: '已取消', 7: '已拒绝', 8: '已关闭' }[s] || '';
 }
 
 function statusType(s: number): any {
-  return { 0: 'warning', 1: 'info', 2: '', 3: 'success', 4: 'warning', 5: 'success', 6: 'info', 7: 'danger', 8: 'info' }[s] || '';
+  return { 0: 'warning', 1: '', 2: 'success', 3: 'warning', 4: '', 5: 'info', 6: 'info', 7: 'danger', 8: 'info' }[s] || '';
 }
 </script>
 

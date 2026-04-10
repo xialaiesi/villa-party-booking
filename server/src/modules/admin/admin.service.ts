@@ -244,14 +244,12 @@ export class AdminService {
     return { list, total, page, pageSize };
   }
 
+  /** 商家确认订单（状态 1→2） */
   async confirmOrder(ctx: AdminContext, id: number) {
-    const order = await this.prisma.order.findUnique({ where: { id } });
-    if (!order) throw new NotFoundException('订单不存在');
-    if (ctx.role === 'merchant' && Number(order.merchantId) !== ctx.merchantId) {
-      throw new NotFoundException('订单不存在');
-    }
-    if (order.status !== 1) throw new BadRequestException('订单状态不可确认');
+    const order = await this.ensureOrderAccess(ctx, id);
+    if (order.status !== 1) throw new BadRequestException('仅已付定金的订单可确认');
 
+    // 锁定日历
     for (let i = 0; i < order.days; i++) {
       const d = new Date(order.checkIn);
       d.setDate(d.getDate() + i);
@@ -267,39 +265,67 @@ export class AdminService {
       data: { status: 2, confirmedAt: new Date() },
     });
 
-    // 创建分账记录
     await this.merchantService.createSettlement(id);
-
     return updated;
   }
 
+  /** 商家拒绝订单（状态 1→7） */
   async rejectOrder(ctx: AdminContext, id: number, reason?: string) {
-    const order = await this.prisma.order.findUnique({ where: { id } });
-    if (!order) throw new NotFoundException('订单不存在');
-    if (ctx.role === 'merchant' && Number(order.merchantId) !== ctx.merchantId) {
-      throw new NotFoundException('订单不存在');
-    }
-    if (order.status !== 1) throw new BadRequestException('订单状态不可拒绝');
-
+    const order = await this.ensureOrderAccess(ctx, id);
+    if (order.status !== 1) throw new BadRequestException('仅已付定金的订单可拒绝');
     return this.prisma.order.update({
       where: { id },
       data: { status: 7, cancelReason: reason },
     });
   }
 
-  async refundDeposit(ctx: AdminContext, id: number, amount: number) {
+  /** 商家确认定金到账（mock 支付，状态 0→1） */
+  async confirmDepositPaid(ctx: AdminContext, id: number) {
+    const order = await this.ensureOrderAccess(ctx, id);
+    if (order.status !== 0) throw new BadRequestException('仅待付定金的订单可确认');
+    return this.prisma.order.update({
+      where: { id },
+      data: { status: 1 },
+    });
+  }
+
+  /** 商家标记已入住（状态 2→3） */
+  async markCheckedIn(ctx: AdminContext, id: number) {
+    const order = await this.ensureOrderAccess(ctx, id);
+    if (order.status !== 2) throw new BadRequestException('仅已确认的订单可标记入住');
+    return this.prisma.order.update({
+      where: { id },
+      data: { status: 3 },
+    });
+  }
+
+  /** 商家确认尾款到账（状态 3→4） */
+  async confirmFinalPayment(ctx: AdminContext, id: number) {
+    const order = await this.ensureOrderAccess(ctx, id);
+    if (order.status !== 3) throw new BadRequestException('仅待付尾款的订单可确认');
+    return this.prisma.order.update({
+      where: { id },
+      data: { status: 4 },
+    });
+  }
+
+  /** 手动标记完成（状态 4→5） */
+  async markCompleted(ctx: AdminContext, id: number) {
+    const order = await this.ensureOrderAccess(ctx, id);
+    if (order.status !== 4) throw new BadRequestException('仅已付全款的订单可完成');
+    return this.prisma.order.update({
+      where: { id },
+      data: { status: 5 },
+    });
+  }
+
+  private async ensureOrderAccess(ctx: AdminContext, id: number) {
     const order = await this.prisma.order.findUnique({ where: { id } });
     if (!order) throw new NotFoundException('订单不存在');
     if (ctx.role === 'merchant' && Number(order.merchantId) !== ctx.merchantId) {
       throw new NotFoundException('订单不存在');
     }
-    if (order.status !== 4) throw new BadRequestException('订单状态不可退押金');
-
-    const depositStatus = amount >= Number(order.depositAmount) ? 2 : 3;
-    return this.prisma.order.update({
-      where: { id },
-      data: { status: 5, depositStatus },
-    });
+    return order;
   }
 
   private hashPassword(password: string): string {
