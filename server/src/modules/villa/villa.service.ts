@@ -30,7 +30,13 @@ export class VillaService {
       if (query.maxPrice) where.basePrice.lte = query.maxPrice;
     }
     if (query.tag) {
-      where.tags = { contains: query.tag };
+      // 模糊匹配：拆词搜索，如 "生日派对" 能匹配 tags 含 "生日" 的
+      const keywords = query.tag.replace(/[,，/\s]+/g, ' ').trim().split(' ').filter(Boolean);
+      if (keywords.length === 1) {
+        where.tags = { contains: keywords[0] };
+      } else {
+        where.OR = keywords.map((kw) => ({ tags: { contains: kw } }));
+      }
     }
     if (query.facilities?.length) {
       where.facilities = {
