@@ -38,16 +38,10 @@
 
     <!-- 照片瀑布流 -->
     <div class="photo-grid" v-if="photos.length">
-      <div class="photo-item" v-for="(p, i) in photos" :key="p.id">
-        <el-image
-          :src="p.url"
-          fit="cover"
-          class="photo-img"
-          :preview-src-list="photos.map((x: any) => x.url)"
-          :initial-index="i"
-          preview-teleported
-          lazy
-        />
+      <div class="photo-item" v-for="p in photos" :key="p.id" @click="openPhotoComment(p)">
+        <img :src="p.url" class="photo-img" loading="lazy" />
+        <!-- 评论数角标 -->
+        <span v-if="commentCounts[p.id]" class="photo-comment-badge">{{ commentCounts[p.id] }}</span>
         <div class="photo-overlay">
           <div class="photo-info">
             <span class="photo-user">{{ p.user?.nickname || '匿名' }}</span>
@@ -60,10 +54,6 @@
           >
             删除
           </el-button>
-        </div>
-        <div class="photo-bottom">
-          <span class="photo-caption-text" v-if="p.caption">{{ p.caption }}</span>
-          <span class="photo-comment-btn" @click.stop="openPhotoComment(p)">💬 评论</span>
         </div>
       </div>
     </div>
@@ -78,12 +68,23 @@
     <!-- 相册级评论 -->
     <CommentSection v-if="album" :album-id="album.id" />
 
-    <!-- 图片评论弹窗 -->
-    <el-dialog v-model="photoCommentVisible" :title="'图片评论'" width="600px">
-      <div v-if="selectedPhoto" style="text-align: center; margin-bottom: 16px;">
-        <el-image :src="selectedPhoto.url" fit="contain" style="max-height: 300px; border-radius: 8px;" />
+    <!-- 图片详情+评论弹窗 -->
+    <el-dialog v-model="photoCommentVisible" width="900px" :show-close="true" top="5vh" class="photo-dialog">
+      <div class="photo-detail-layout" v-if="selectedPhoto">
+        <!-- 左：大图 -->
+        <div class="photo-detail-left">
+          <img :src="selectedPhoto.url" />
+          <div class="photo-detail-meta">
+            <span class="photo-detail-user">{{ selectedPhoto.user?.nickname || '匿名' }}</span>
+            <span class="photo-detail-date">{{ formatDate(selectedPhoto.createdAt) }}</span>
+            <span v-if="selectedPhoto.caption" class="photo-detail-caption">{{ selectedPhoto.caption }}</span>
+          </div>
+        </div>
+        <!-- 右：评论 -->
+        <div class="photo-detail-right">
+          <CommentSection :album-id="album.id" :photo-id="selectedPhoto.id" :key="selectedPhoto.id" @update="loadCommentCounts" />
+        </div>
       </div>
-      <CommentSection v-if="selectedPhoto && album" :album-id="album.id" :photo-id="selectedPhoto.id" />
     </el-dialog>
   </div>
 </template>
@@ -93,7 +94,7 @@ import { ref, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { PictureFilled } from '@element-plus/icons-vue';
-import { getAlbumDetail, addPhoto, deletePhoto } from '../../api/album';
+import { getAlbumDetail, addPhoto, deletePhoto, getComments } from '../../api/album';
 import { uploadSingle } from '../../api/upload';
 import { useUserStore } from '../../store/user';
 import CommentSection from '../../components/CommentSection.vue';
@@ -105,10 +106,26 @@ const photos = ref<any[]>([]);
 const currentUserId = ref<number>(0);
 const photoCommentVisible = ref(false);
 const selectedPhoto = ref<any>(null);
+const commentCounts = ref<Record<number, number>>({});
 
 function openPhotoComment(photo: any) {
   selectedPhoto.value = photo;
   photoCommentVisible.value = true;
+}
+
+async function loadCommentCounts() {
+  if (!album.value || !photos.value.length) return;
+  const counts: Record<number, number> = {};
+  // 并行请求每张图片的评论数
+  await Promise.all(photos.value.map(async (p: any) => {
+    try {
+      const comments: any = await getComments(album.value.id, p.id);
+      let total = comments.length;
+      comments.forEach((c: any) => { total += c.replies?.length || 0; });
+      if (total > 0) counts[p.id] = total;
+    } catch { /* ignore */ }
+  }));
+  commentCounts.value = counts;
 }
 
 onMounted(async () => {
@@ -122,6 +139,7 @@ async function loadAlbum() {
     const data: any = await getAlbumDetail(id);
     album.value = data;
     photos.value = data.photos || [];
+    loadCommentCounts();
   } catch (e: any) {
     ElMessage.error(e.message || '加载失败');
   }
@@ -230,17 +248,37 @@ function formatDate(d: string) {
 .photo-info { display: flex; flex-direction: column; gap: 2px; }
 .photo-user { font-size: 13px; font-weight: 500; }
 .photo-date { font-size: 11px; opacity: 0.8; }
-.photo-bottom {
-  padding: 8px 12px; font-size: 13px; color: #64748b;
-  border-top: 1px solid #f1f5f9;
-  display: flex; justify-content: space-between; align-items: center;
+/* 评论数角标 */
+.photo-comment-badge {
+  position: absolute; top: 8px; right: 8px;
+  background: #ef4444; color: #fff; font-size: 11px; font-weight: 700;
+  min-width: 20px; height: 20px; line-height: 20px;
+  text-align: center; border-radius: 10px; padding: 0 5px;
+  z-index: 2;
 }
-.photo-caption-text { flex: 1; }
-.photo-comment-btn {
-  cursor: pointer; font-size: 12px; color: #94a3b8;
-  transition: color 0.2s; white-space: nowrap;
+
+/* 图片详情弹窗 */
+.photo-detail-layout {
+  display: flex; gap: 0; min-height: 500px;
 }
-.photo-comment-btn:hover { color: #3b82f6; }
+.photo-detail-left {
+  flex: 1; background: #000; display: flex; flex-direction: column;
+  border-radius: 8px 0 0 8px; overflow: hidden;
+}
+.photo-detail-left img {
+  flex: 1; object-fit: contain; max-height: 500px; width: 100%;
+}
+.photo-detail-meta {
+  padding: 12px 16px; background: #1e293b; color: #94a3b8;
+  display: flex; gap: 12px; align-items: center; font-size: 13px;
+}
+.photo-detail-user { color: #e2e8f0; font-weight: 500; }
+.photo-detail-caption { color: #cbd5e1; }
+.photo-detail-right {
+  width: 320px; flex-shrink: 0; padding: 16px;
+  overflow-y: auto; max-height: 600px;
+  border-left: 1px solid #f1f5f9;
+}
 
 /* 空状态 */
 .empty-photos {

@@ -78,6 +78,7 @@ import { getComments, addComment, deleteComment } from '../api/album';
 import { useUserStore } from '../store/user';
 
 const props = defineProps<{ albumId: number; photoId?: number }>();
+const emit = defineEmits<{ update: [] }>();
 const userStore = useUserStore();
 
 const comments = ref<any[]>([]);
@@ -110,6 +111,7 @@ async function submitComment() {
     replyTo.value = null;
     ElMessage.success('评论成功');
     loadComments();
+    emit('update');
   } catch (e: any) {
     ElMessage.error(e.message || '评论失败');
   }
@@ -120,6 +122,7 @@ async function handleDelete(id: number) {
     await deleteComment(id);
     ElMessage.success('已删除');
     loadComments();
+    emit('update');
   } catch (e: any) {
     ElMessage.error(e.message || '删除失败');
   }
