@@ -1,20 +1,33 @@
 <template>
   <div>
+    <!-- 顶部操作栏 -->
     <div class="toolbar">
-      <el-button type="primary" @click="openDialog()">新增别墅</el-button>
-      <el-button type="success" @click="importVisible = true">
-        <el-icon style="margin-right: 4px;"><Link /></el-icon>
-        从 URL 导入
+      <el-button type="primary" size="large" @click="openDialog()">
+        <el-icon style="margin-right: 6px;"><Plus /></el-icon>
+        新增别墅
       </el-button>
-      <el-button type="warning" @click="imageImportVisible = true">
-        <el-icon style="margin-right: 4px;"><Picture /></el-icon>
-        图片导入
-      </el-button>
-      <el-button @click="textImportVisible = true">
-        <el-icon style="margin-right: 4px;"><Document /></el-icon>
-        文案导入
-      </el-button>
+      <div class="import-group">
+        <div class="import-card" @click="smartImportVisible = true">
+          <div class="import-card-icon" style="background: linear-gradient(135deg, #667eea, #764ba2);">
+            <el-icon :size="22"><MagicStick /></el-icon>
+          </div>
+          <div class="import-card-text">
+            <div class="import-card-title">智能导入</div>
+            <div class="import-card-desc">图片 + 文案，AI 一键生成</div>
+          </div>
+        </div>
+        <div class="import-card" @click="importVisible = true">
+          <div class="import-card-icon" style="background: linear-gradient(135deg, #f093fb, #f5576c);">
+            <el-icon :size="22"><Link /></el-icon>
+          </div>
+          <div class="import-card-text">
+            <div class="import-card-title">网页导入</div>
+            <div class="import-card-desc">从简篇/美篇链接抓取</div>
+          </div>
+        </div>
+      </div>
     </div>
+
     <el-table :data="villaList" border stripe>
       <el-table-column prop="id" label="ID" width="80" />
       <el-table-column prop="name" label="名称" />
@@ -54,12 +67,7 @@
       <el-form :model="form" label-width="100px">
         <el-form-item label="归属商家" v-if="userStore.isPlatform">
           <el-select v-model="form.merchantId" placeholder="请选择商家" style="width: 100%;">
-            <el-option
-              v-for="m in merchantOptions"
-              :key="m.id"
-              :label="m.name"
-              :value="m.id"
-            />
+            <el-option v-for="m in merchantOptions" :key="m.id" :label="m.name" :value="m.id" />
           </el-select>
         </el-form-item>
         <el-form-item label="名称"><el-input v-model="form.name" /></el-form-item>
@@ -72,74 +80,34 @@
         <el-form-item label="押金"><el-input-number v-model="form.deposit" :min="0" :precision="2" /></el-form-item>
         <el-form-item label="标签"><el-input v-model="form.tags" placeholder="团建,生日,聚会" /></el-form-item>
 
-        <!-- 图片管理 -->
         <el-form-item label="图片">
           <div class="image-section">
             <div class="image-input">
-              <el-upload
-                :show-file-list="false"
-                :before-upload="handleUpload"
-                multiple
-                accept="image/*"
-              >
-                <el-button type="primary" size="small">📷 上传图片</el-button>
+              <el-upload :show-file-list="false" :before-upload="handleUpload" multiple accept="image/*">
+                <el-button type="primary" size="small">上传图片</el-button>
               </el-upload>
               <el-input v-model="newImageUrl" placeholder="或输入图片 URL" style="flex: 1; margin-left: 8px;">
-                <template #append>
-                  <el-button @click="addImage">添加</el-button>
-                </template>
+                <template #append><el-button @click="addImage">添加</el-button></template>
               </el-input>
             </div>
             <div class="image-list" v-if="imageItems.length">
               <div class="image-item" v-for="(item, index) in imageItems" :key="index">
-                <el-image
-                  :src="resolveUrl(item.url)"
-                  fit="cover"
-                  style="width: 100px; height: 75px; border-radius: 4px; cursor: pointer;"
-                  :preview-src-list="imageItems.map(i => resolveUrl(i.url))"
-                  :initial-index="index"
-                  preview-teleported
-                />
-                <el-input
-                  v-model="item.caption"
-                  size="small"
-                  placeholder="图片说明（可选，如：客厅 30 平米配投影仪）"
-                  style="flex: 1; margin-left: 8px;"
-                />
-                <el-tag v-if="imageAnalysis[index]" size="small" type="info" style="margin-left: 8px;">
-                  {{ imageAnalysis[index]?.categoryName }}
-                </el-tag>
+                <el-image :src="resolveUrl(item.url)" fit="cover" style="width: 100px; height: 75px; border-radius: 4px; cursor: pointer;" :preview-src-list="imageItems.map(i => resolveUrl(i.url))" :initial-index="index" preview-teleported />
+                <el-input v-model="item.caption" size="small" placeholder="图片说明" style="flex: 1; margin-left: 8px;" />
+                <el-tag v-if="imageAnalysis[index]" size="small" type="info" style="margin-left: 8px;">{{ imageAnalysis[index]?.categoryName }}</el-tag>
                 <el-button size="small" text @click="moveUp(index)" :disabled="index === 0" style="margin-left: 4px;">↑</el-button>
                 <el-button size="small" text @click="moveDown(index)" :disabled="index === imageItems.length - 1">↓</el-button>
                 <el-button size="small" text type="danger" @click="removeImage(index)">删除</el-button>
               </div>
             </div>
-            <el-button
-              v-if="imageItems.length > 0"
-              type="warning"
-              size="small"
-              :loading="aiLoading"
-              @click="handleAiAnalyze"
-              style="margin-top: 8px;"
-            >
-              AI 智能排版
-            </el-button>
+            <el-button v-if="imageItems.length > 0" type="warning" size="small" :loading="aiLoading" @click="handleAiAnalyze" style="margin-top: 8px;">AI 智能排版</el-button>
           </div>
         </el-form-item>
 
-        <!-- 描述 + AI 生成 -->
         <el-form-item label="描述">
           <div style="width: 100%;">
             <el-input v-model="form.description" type="textarea" :rows="4" placeholder="别墅描述..." />
-            <el-button
-              type="warning"
-              size="small"
-              :loading="descLoading"
-              @click="handleAiDescription"
-              style="margin-top: 8px;"
-            >
-              AI 生成描述
-            </el-button>
+            <el-button type="warning" size="small" :loading="descLoading" @click="handleAiDescription" style="margin-top: 8px;">AI 生成描述</el-button>
           </div>
         </el-form-item>
       </el-form>
@@ -149,191 +117,142 @@
       </template>
     </el-dialog>
 
-    <!-- 文案导入 -->
+    <!-- 智能导入（图片 + 文案合并） -->
     <el-dialog
-      v-model="textImportVisible"
-      title="文案导入 — 粘贴文字自动提取"
-      width="650px"
+      v-model="smartImportVisible"
+      title="智能导入"
+      width="720px"
       :close-on-click-modal="false"
-      @close="handleTextImportClose"
+      @close="handleSmartImportClose"
     >
-      <el-alert type="info" :closable="false" style="margin-bottom: 16px;">
-        <div>粘贴别墅推荐文案（小红书/公众号/朋友圈等），AI 自动提取：</div>
-        <div>✅ 名称、地址、面积、房间数、容纳人数</div>
-        <div>✅ 设施列表（KTV/泳池/烧烤/麻将等）</div>
-        <div>✅ 价格估算 + 营销描述重写</div>
-      </el-alert>
-
-      <el-input
-        v-model="textImportContent"
-        type="textarea"
-        :rows="10"
-        placeholder="粘贴别墅介绍文案到这里..."
-        maxlength="5000"
-        show-word-limit
-      />
-
-      <!-- 结果预览 -->
-      <div v-if="textImportResult" class="import-preview" style="margin-top: 16px;">
-        <el-divider>提取结果</el-divider>
-        <div class="struct-grid" style="margin-bottom: 12px;">
-          <span>{{ textImportResult.villa.name }}</span>
-          <span>{{ textImportResult.villa.maxGuests }}人</span>
-          <span>{{ textImportResult.villa.bedrooms }}间房</span>
-          <span v-if="textImportResult.villa.area">{{ textImportResult.villa.area }}㎡</span>
-          <span>¥{{ textImportResult.villa.basePrice }}/晚</span>
-        </div>
-        <div v-if="textImportResult.villa.facilities?.length" style="margin-bottom: 12px;">
-          <strong>设施：</strong>
-          <el-tag v-for="f in textImportResult.villa.facilities" :key="f" size="small" style="margin: 2px;">{{ f }}</el-tag>
-        </div>
-        <div v-if="textImportResult.extra?.highlights?.length" style="margin-bottom: 12px;">
-          <strong>卖点：</strong>
-          <el-tag v-for="h in textImportResult.extra.highlights" :key="h" type="warning" size="small" style="margin: 2px;">{{ h }}</el-tag>
-        </div>
-        <div v-if="textImportResult.villa.description" style="font-size: 13px; color: #666; line-height: 1.8;">
-          <strong>描述：</strong>{{ textImportResult.villa.description }}
-        </div>
-      </div>
-
-      <template #footer>
-        <el-button @click="textImportVisible = false">取消</el-button>
-        <el-button type="primary" :loading="textImportLoading" :disabled="!textImportContent.trim()" @click="handleTextImportParse">
-          {{ textImportResult ? '重新解析' : 'AI 解析' }}
-        </el-button>
-        <el-button type="success" v-if="textImportResult" @click="handleUseTextImport">
-          使用这些数据创建
-        </el-button>
-      </template>
-    </el-dialog>
-
-    <!-- 图片导入 -->
-    <el-dialog
-      v-model="imageImportVisible"
-      title="图片导入 — 批量上传生成别墅"
-      width="650px"
-      :close-on-click-modal="false"
-      @close="handleImageImportClose"
-    >
-      <el-alert type="info" :closable="false" style="margin-bottom: 16px;">
-        <div>选择别墅的多张图片（客厅、卧室、泳池等），AI 自动：</div>
-        <div>✅ 识别图片类型并排序（外观→泳池→客厅→卧室…）</div>
-        <div>✅ 选择最佳封面图</div>
-        <div>✅ 推断别墅名称、价格、容纳人数等信息</div>
-        <div>✅ 生成营销描述文案</div>
-      </el-alert>
-
-      <el-upload
-        ref="imageImportUploadRef"
-        :auto-upload="false"
-        multiple
-        accept="image/*"
-        :limit="30"
-        list-type="picture-card"
-        v-model:file-list="imageImportFiles"
-      >
-        <el-icon><Plus /></el-icon>
-        <template #tip>
-          <div class="el-upload__tip">支持 jpg/png/webp，最多 30 张，每张 ≤ 10MB</div>
-        </template>
-      </el-upload>
-
-      <!-- 结果预览 -->
-      <div v-if="imageImportResult" class="import-preview" style="margin-top: 16px;">
-        <el-divider>AI 分析结果</el-divider>
-        <div class="struct-grid" style="margin-bottom: 12px;">
-          <span>名称：{{ imageImportResult.villa.name }}</span>
-          <span>人数：{{ imageImportResult.villa.maxGuests }}人</span>
-          <span>卧室：{{ imageImportResult.villa.bedrooms }}间</span>
-          <span>平日价：¥{{ imageImportResult.villa.basePrice }}</span>
-          <span>周末价：¥{{ imageImportResult.villa.weekendPrice }}</span>
-          <span v-for="(v, k) in imageImportResult.stats.categories" :key="k">{{ k }}：{{ v }}张</span>
-        </div>
-        <div class="preview-imgs">
-          <div v-for="(img, i) in imageImportResult.images.slice(0, 8)" :key="i" style="position: relative; display: inline-block;">
-            <el-image :src="img.url" fit="cover" style="width: 80px; height: 60px; margin: 4px; border-radius: 4px;" />
-            <el-tag v-if="img.isCover" type="danger" size="small" style="position: absolute; top: 0; left: 4px; font-size: 10px;">封面</el-tag>
+      <!-- 步骤 1：输入区 -->
+      <div class="smart-import-sections">
+        <div class="smart-section">
+          <div class="smart-section-header">
+            <el-icon :size="18" color="#667eea"><Picture /></el-icon>
+            <span>上传别墅图片</span>
+            <el-tag size="small" type="info">选填</el-tag>
           </div>
-          <span v-if="imageImportResult.images.length > 8">...+{{ imageImportResult.images.length - 8 }}</span>
+          <el-upload
+            :auto-upload="false"
+            multiple
+            accept="image/*"
+            :limit="30"
+            list-type="picture-card"
+            v-model:file-list="smartImportFiles"
+          >
+            <el-icon><Plus /></el-icon>
+            <template #tip>
+              <div class="el-upload__tip">jpg / png / webp，最多 30 张</div>
+            </template>
+          </el-upload>
+        </div>
+
+        <el-divider>
+          <el-tag effect="dark" round>图片 + 文案效果更佳</el-tag>
+        </el-divider>
+
+        <div class="smart-section">
+          <div class="smart-section-header">
+            <el-icon :size="18" color="#f5576c"><Document /></el-icon>
+            <span>粘贴别墅文案</span>
+            <el-tag size="small" type="info">选填</el-tag>
+          </div>
+          <el-input
+            v-model="smartImportText"
+            type="textarea"
+            :rows="6"
+            placeholder="粘贴小红书/公众号/朋友圈的别墅介绍文案，AI 自动提取名称、地址、价格、设施等信息..."
+            maxlength="5000"
+            show-word-limit
+          />
+        </div>
+      </div>
+
+      <!-- 步骤 2：结果预览 -->
+      <div v-if="smartImportResult" class="smart-result">
+        <el-divider>
+          <el-tag type="success" effect="dark" round>AI 分析结果</el-tag>
+        </el-divider>
+
+        <!-- 别墅信息卡 -->
+        <div class="result-card">
+          <h4>{{ smartImportResult.villa.name }}</h4>
+          <div class="result-tags">
+            <el-tag v-if="smartImportResult.villa.address" size="small">{{ smartImportResult.villa.address }}</el-tag>
+            <el-tag size="small" type="warning">{{ smartImportResult.villa.maxGuests }}人</el-tag>
+            <el-tag size="small" type="warning">{{ smartImportResult.villa.bedrooms }}间房</el-tag>
+            <el-tag v-if="smartImportResult.villa.area" size="small" type="warning">{{ smartImportResult.villa.area }}㎡</el-tag>
+            <el-tag size="small" type="success">¥{{ smartImportResult.villa.basePrice }}/晚</el-tag>
+          </div>
+          <div v-if="smartImportResult.villa.facilities?.length" class="result-facilities">
+            <el-tag v-for="f in smartImportResult.villa.facilities" :key="f" size="small" effect="plain" style="margin: 2px;">{{ f }}</el-tag>
+          </div>
+          <div v-if="smartImportResult.extra?.highlights?.length" class="result-highlights">
+            <span v-for="h in smartImportResult.extra.highlights" :key="h" class="highlight-tag">{{ h }}</span>
+          </div>
+        </div>
+
+        <!-- 图片预览（有图片时） -->
+        <div v-if="smartImportResult.images?.length" class="result-images">
+          <div v-for="(img, i) in smartImportResult.images.slice(0, 10)" :key="i" class="result-img-wrap">
+            <el-image :src="img.url" fit="cover" class="result-img" />
+            <span v-if="img.isCover" class="cover-badge">封面</span>
+            <span class="cat-badge">{{ img.categoryName }}</span>
+          </div>
+          <span v-if="smartImportResult.images.length > 10" class="more-imgs">+{{ smartImportResult.images.length - 10 }}</span>
         </div>
       </div>
 
       <template #footer>
-        <el-button @click="imageImportVisible = false">取消</el-button>
+        <el-button @click="smartImportVisible = false">取消</el-button>
         <el-button
           type="primary"
-          :loading="imageImportLoading"
-          :disabled="!imageImportFiles.length"
-          @click="handleImageImport"
+          size="large"
+          :loading="smartImportLoading"
+          :disabled="!smartImportFiles.length && !smartImportText.trim()"
+          @click="handleSmartImport"
         >
-          {{ imageImportResult ? '重新分析' : '上传并分析' }}
+          <el-icon style="margin-right: 4px;"><MagicStick /></el-icon>
+          {{ smartImportResult ? '重新分析' : 'AI 分析生成' }}
         </el-button>
-        <el-button type="success" v-if="imageImportResult" @click="handleUseImageImport">
+        <el-button type="success" size="large" v-if="smartImportResult" @click="handleUseSmartImport">
           使用这些数据创建
         </el-button>
       </template>
     </el-dialog>
 
     <!-- 从 URL 导入 -->
-    <el-dialog
-      v-model="importVisible"
-      title="从 URL 导入别墅信息"
-      width="600px"
-      :close-on-click-modal="false"
-      @close="handleImportClose"
-    >
-      <el-alert
-        type="info"
-        :closable="false"
-        style="margin-bottom: 16px;"
-      >
-        <div>支持从简篇、美篇等网页导入：</div>
-        <div>✅ 启动浏览器模拟滚动，处理懒加载图片</div>
-        <div>✅ 自动下载图片到服务器，解决防盗链</div>
-        <div>⚠️ 首次抓取较慢（20-60 秒），请耐心等待</div>
+    <el-dialog v-model="importVisible" title="从网页链接导入" width="600px" :close-on-click-modal="false" @close="handleImportClose">
+      <el-alert type="info" :closable="false" style="margin-bottom: 16px;">
+        <div>支持简篇、美篇等网页，自动抓取图片和信息</div>
+        <div style="color: #999; font-size: 12px; margin-top: 4px;">首次抓取需要 20-60 秒</div>
       </el-alert>
       <el-form label-width="80px">
         <el-form-item label="页面 URL">
-          <el-input
-            v-model="importUrl"
-            type="textarea"
-            :rows="2"
-            placeholder="如：https://www.jianpian.cn/a/xxxxx"
-          />
+          <el-input v-model="importUrl" type="textarea" :rows="2" placeholder="https://www.jianpian.cn/a/xxxxx" />
         </el-form-item>
       </el-form>
-
       <div v-if="importResult" class="import-preview">
         <el-divider>抓取结果</el-divider>
-        <div class="preview-item">
-          <strong>标题：</strong>{{ importResult.title }}
-        </div>
+        <div class="preview-item"><strong>标题：</strong>{{ importResult.title }}</div>
         <div class="preview-item" v-if="importResult.structured">
-          <strong>识别信息：</strong>
           <div class="struct-grid">
-            <span v-if="importResult.structured.name">名称：{{ importResult.structured.name }}</span>
-            <span v-if="importResult.structured.maxGuests">人数：{{ importResult.structured.maxGuests }}人</span>
-            <span v-if="importResult.structured.bedrooms">卧室：{{ importResult.structured.bedrooms }}间</span>
-            <span v-if="importResult.structured.area">面积：{{ importResult.structured.area }}㎡</span>
-            <span v-if="importResult.structured.basePrice">价格：¥{{ importResult.structured.basePrice }}</span>
-            <span v-if="importResult.structured.facilities?.length">设施：{{ importResult.structured.facilities.join('/') }}</span>
+            <span v-if="importResult.structured.name">{{ importResult.structured.name }}</span>
+            <span v-if="importResult.structured.maxGuests">{{ importResult.structured.maxGuests }}人</span>
+            <span v-if="importResult.structured.bedrooms">{{ importResult.structured.bedrooms }}间</span>
+            <span v-if="importResult.structured.area">{{ importResult.structured.area }}㎡</span>
+            <span v-if="importResult.structured.basePrice">¥{{ importResult.structured.basePrice }}</span>
           </div>
         </div>
         <div class="preview-item">
-          <strong>图片（{{ importResult.images.length }} 张）：</strong>
+          <strong>图片（{{ importResult.images.length }} 张）</strong>
           <div class="preview-imgs">
-            <el-image
-              v-for="(img, i) in importResult.images.slice(0, 6)"
-              :key="i"
-              :src="resolveUrl(img)"
-              fit="cover"
-              style="width: 80px; height: 60px; margin: 4px; border-radius: 4px;"
-            />
-            <span v-if="importResult.images.length > 6">...+{{ importResult.images.length - 6 }}</span>
+            <el-image v-for="(img, i) in importResult.images.slice(0, 6)" :key="i" :src="resolveUrl(img)" fit="cover" style="width: 80px; height: 60px; margin: 4px; border-radius: 4px;" />
+            <span v-if="importResult.images.length > 6">+{{ importResult.images.length - 6 }}</span>
           </div>
         </div>
       </div>
-
       <template #footer>
         <el-button @click="importVisible = false">取消</el-button>
         <el-button type="primary" :loading="importLoading" @click="handleFetchUrl">抓取</el-button>
@@ -346,7 +265,7 @@
 <script setup lang="ts">
 import { ref, onMounted, reactive } from 'vue';
 import { ElMessage } from 'element-plus';
-import { Link, Picture, Plus, Document } from '@element-plus/icons-vue';
+import { Link, Picture, Plus, Document, MagicStick } from '@element-plus/icons-vue';
 import { getVillas, createVilla, updateVilla, updateVillaStatus } from '../../api/villa';
 import { analyzeImages, generateDescription } from '../../api/ai';
 import { importFromUrl, importFromImages, importFromText } from '../../api/import';
@@ -388,7 +307,7 @@ async function handleUpload(file: File) {
   } catch (e) {
     ElMessage.error('上传失败');
   }
-  return false; // 阻止 el-upload 默认上传
+  return false;
 }
 
 function moveUp(i: number) {
@@ -401,36 +320,80 @@ function moveDown(i: number) {
   [imageItems.value[i + 1], imageItems.value[i]] = [imageItems.value[i], imageItems.value[i + 1]];
 }
 
-// 文案导入
-const textImportVisible = ref(false);
-const textImportContent = ref('');
-const textImportLoading = ref(false);
-const textImportResult = ref<any>(null);
+// ===== 智能导入（图片 + 文案合并）=====
+const smartImportVisible = ref(false);
+const smartImportFiles = ref<any[]>([]);
+const smartImportText = ref('');
+const smartImportLoading = ref(false);
+const smartImportResult = ref<any>(null);
 
-function handleTextImportClose() {
-  textImportContent.value = '';
-  textImportResult.value = null;
+function handleSmartImportClose() {
+  smartImportFiles.value = [];
+  smartImportText.value = '';
+  smartImportResult.value = null;
 }
 
-async function handleTextImportParse() {
-  if (!textImportContent.value.trim()) {
-    ElMessage.warning('请输入文案内容');
+async function handleSmartImport() {
+  const hasFiles = smartImportFiles.value.length > 0;
+  const hasText = smartImportText.value.trim().length > 0;
+  if (!hasFiles && !hasText) {
+    ElMessage.warning('请上传图片或粘贴文案');
     return;
   }
-  textImportLoading.value = true;
-  textImportResult.value = null;
+
+  smartImportLoading.value = true;
+  smartImportResult.value = null;
+
   try {
-    textImportResult.value = await importFromText(textImportContent.value);
-    ElMessage.success('解析完成');
+    let imageResult: any = null;
+    let textResult: any = null;
+
+    // 并行：图片上传分析 + 文案解析
+    const tasks: Promise<any>[] = [];
+    if (hasFiles) {
+      tasks.push(
+        importFromImages(smartImportFiles.value.map((f: any) => f.raw)).then(r => imageResult = r)
+      );
+    }
+    if (hasText) {
+      tasks.push(
+        importFromText(smartImportText.value).then(r => textResult = r)
+      );
+    }
+    await Promise.all(tasks);
+
+    // 合并结果：文案数据优先（更准确），图片数据补充
+    const villa = { ...(imageResult?.villa || {}), ...(textResult?.villa || {}) };
+    // 如果文案没提取到某些字段，用图片分析的
+    if (imageResult?.villa) {
+      for (const key of Object.keys(imageResult.villa)) {
+        if (!villa[key] && imageResult.villa[key]) villa[key] = imageResult.villa[key];
+      }
+    }
+    // 合并设施列表（去重）
+    const allFacilities = new Set([
+      ...(imageResult?.villa?.facilities || []),
+      ...(textResult?.villa?.facilities || []),
+    ]);
+    villa.facilities = Array.from(allFacilities);
+
+    smartImportResult.value = {
+      villa,
+      images: imageResult?.images || [],
+      stats: imageResult?.stats || {},
+      extra: textResult?.extra || {},
+    };
+
+    ElMessage.success('分析完成');
   } catch (e: any) {
-    ElMessage.error(e.message || '解析失败');
+    ElMessage.error(e.message || '分析失败');
   } finally {
-    textImportLoading.value = false;
+    smartImportLoading.value = false;
   }
 }
 
-function handleUseTextImport() {
-  const r = textImportResult.value;
+function handleUseSmartImport() {
+  const r = smartImportResult.value;
   if (!r) return;
   const v = r.villa;
 
@@ -448,83 +411,25 @@ function handleUseTextImport() {
     merchantId: form.merchantId || merchantOptions.value[0]?.id || null,
   });
 
-  imageItems.value = [];
-  imageAnalysis.value = [];
+  if (r.images?.length) {
+    imageItems.value = r.images.map((img: any) => ({ url: img.url, caption: img.caption || '' }));
+    imageAnalysis.value = r.images;
+  } else {
+    imageItems.value = [];
+    imageAnalysis.value = [];
+  }
 
-  textImportVisible.value = false;
+  smartImportVisible.value = false;
   editingId.value = null;
   dialogVisible.value = true;
-  textImportContent.value = '';
-  textImportResult.value = null;
+  smartImportFiles.value = [];
+  smartImportText.value = '';
+  smartImportResult.value = null;
 
-  ElMessage.info('已填入数据，请上传图片后保存');
+  ElMessage.info(r.images?.length ? '已填入数据，请确认后保存' : '已填入数据，请上传图片后保存');
 }
 
-// 图片导入
-const imageImportVisible = ref(false);
-const imageImportFiles = ref<any[]>([]);
-const imageImportLoading = ref(false);
-const imageImportResult = ref<any>(null);
-
-function handleImageImportClose() {
-  imageImportFiles.value = [];
-  imageImportResult.value = null;
-}
-
-async function handleImageImport() {
-  if (!imageImportFiles.value.length) {
-    ElMessage.warning('请先选择图片');
-    return;
-  }
-  imageImportLoading.value = true;
-  imageImportResult.value = null;
-  try {
-    const files = imageImportFiles.value.map((f: any) => f.raw);
-    imageImportResult.value = await importFromImages(files);
-    ElMessage.success(`分析完成：${imageImportResult.value.stats.uploaded} 张图片`);
-  } catch (e: any) {
-    ElMessage.error(e.message || '导入失败');
-  } finally {
-    imageImportLoading.value = false;
-  }
-}
-
-function handleUseImageImport() {
-  const r = imageImportResult.value;
-  if (!r) return;
-  const v = r.villa;
-
-  Object.assign(form, {
-    name: v.name || '',
-    address: v.address || '',
-    maxGuests: v.maxGuests || 10,
-    bedrooms: v.bedrooms || 3,
-    area: v.area || 200,
-    basePrice: v.basePrice || 0,
-    weekendPrice: v.weekendPrice || 0,
-    deposit: v.deposit || 500,
-    description: v.description || '',
-    tags: v.tags || '团建,生日,聚会',
-    merchantId: form.merchantId || merchantOptions.value[0]?.id || null,
-  });
-
-  imageItems.value = r.images.map((img: any) => ({
-    url: img.url,
-    caption: img.caption || '',
-  }));
-  imageAnalysis.value = r.images;
-
-  // 关闭图片导入弹窗，打开编辑弹窗
-  imageImportVisible.value = false;
-  editingId.value = null;
-  dialogVisible.value = true;
-  imageImportFiles.value = [];
-  imageImportResult.value = null;
-
-  ElMessage.info('已填入数据，请确认后保存');
-}
-
-// 从 URL 导入
+// ===== 从 URL 导入 =====
 const importVisible = ref(false);
 const importUrl = ref('');
 const importLoading = ref(false);
@@ -536,31 +441,22 @@ function handleImportClose() {
 }
 
 async function handleFetchUrl() {
-  // 去除前后空格和换行（兼容复制粘贴带空格的情况）
   const url = importUrl.value?.trim().replace(/[\r\n]/g, '');
-  if (!url) {
-    ElMessage.warning('请输入 URL');
-    return;
-  }
-  importUrl.value = url; // 回填清理后的值
+  if (!url) { ElMessage.warning('请输入 URL'); return; }
+  importUrl.value = url;
   importLoading.value = true;
   importResult.value = null;
   try {
     importResult.value = await importFromUrl(url);
-    ElMessage.success('抓取成功，请预览确认');
-  } catch (e) {
-    // 错误由拦截器处理
-  } finally {
-    importLoading.value = false;
-  }
+    ElMessage.success('抓取成功');
+  } catch (e) { /* interceptor handles */ }
+  finally { importLoading.value = false; }
 }
 
 function handleUseImport() {
   const r = importResult.value;
   if (!r) return;
   const s = r.structured || {};
-
-  // 填入表单
   Object.assign(form, {
     name: s.name || r.title || '',
     address: s.address || '',
@@ -574,25 +470,18 @@ function handleUseImport() {
     tags: s.tags || '团建,生日,聚会',
     merchantId: form.merchantId || merchantOptions.value[0]?.id || null,
   });
-
-  // 填入图片
   imageItems.value = r.images.map((url: string) => ({ url, caption: '' }));
   imageAnalysis.value = [];
-
-  // 关闭导入弹窗，打开编辑弹窗
   importVisible.value = false;
   editingId.value = null;
   dialogVisible.value = true;
   importResult.value = null;
   importUrl.value = '';
-
   ElMessage.info('已填入数据，请确认后保存');
 }
 
-onMounted(() => {
-  loadData();
-  loadMerchants();
-});
+// ===== 基础操作 =====
+onMounted(() => { loadData(); loadMerchants(); });
 
 async function loadData() {
   const res: any = await getVillas({ page: page.value, pageSize });
@@ -605,13 +494,10 @@ async function loadMerchants() {
   try {
     const res: any = await getMerchants({ page: 1, pageSize: 100 });
     merchantOptions.value = res.list;
-    // 默认选第一个商家
     if (merchantOptions.value.length && !form.merchantId) {
       form.merchantId = merchantOptions.value[0].id;
     }
-  } catch (e) {
-    console.error(e);
-  }
+  } catch (e) { console.error(e); }
 }
 
 function openDialog() {
@@ -645,17 +531,12 @@ function removeImage(index: number) {
   imageAnalysis.value.splice(index, 1);
 }
 
-/** AI 智能排版：分析图片并重新排序 */
 async function handleAiAnalyze() {
-  if (imageItems.value.length === 0) {
-    ElMessage.warning('请先添加图片');
-    return;
-  }
+  if (imageItems.value.length === 0) { ElMessage.warning('请先添加图片'); return; }
   aiLoading.value = true;
   try {
     const urls = imageItems.value.map((i) => resolveUrl(i.url));
     const result: any = await analyzeImages(urls);
-    // 按 AI 建议重新排序（保留原 caption）
     const captionMap = new Map(imageItems.value.map((i) => [resolveUrl(i.url), i.caption]));
     imageItems.value = result.map((r: any) => ({
       url: imageItems.value.find((i) => resolveUrl(i.url) === r.url)?.url || r.url,
@@ -663,35 +544,22 @@ async function handleAiAnalyze() {
     }));
     imageAnalysis.value = result;
     ElMessage.success('图片排版完成');
-  } catch (e) {
-    ElMessage.error('AI 分析失败，请检查 API 配置');
-  } finally {
-    aiLoading.value = false;
-  }
+  } catch (e) { ElMessage.error('AI 分析失败'); }
+  finally { aiLoading.value = false; }
 }
 
-/** AI 生成描述 */
 async function handleAiDescription() {
-  if (!form.name) {
-    ElMessage.warning('请先填写别墅名称');
-    return;
-  }
+  if (!form.name) { ElMessage.warning('请先填写别墅名称'); return; }
   descLoading.value = true;
   try {
     const result: any = await generateDescription({
-      name: form.name,
-      address: form.address,
-      maxGuests: form.maxGuests,
-      bedrooms: form.bedrooms,
-      area: form.area,
+      name: form.name, address: form.address,
+      maxGuests: form.maxGuests, bedrooms: form.bedrooms, area: form.area,
     });
     form.description = result.description;
     ElMessage.success('描述已生成');
-  } catch (e) {
-    ElMessage.error('AI 生成失败，请检查 API 配置');
-  } finally {
-    descLoading.value = false;
-  }
+  } catch (e) { ElMessage.error('AI 生成失败'); }
+  finally { descLoading.value = false; }
 }
 
 async function handleSubmit() {
@@ -700,7 +568,6 @@ async function handleSubmit() {
     images: imageItems.value,
     coverImage: imageItems.value[0]?.url || '',
   };
-
   if (editingId.value) {
     await updateVilla(editingId.value, data);
     ElMessage.success('更新成功');
@@ -722,14 +589,151 @@ async function toggleStatus(row: any) {
 </script>
 
 <style scoped>
-.toolbar { margin-bottom: 16px; }
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+.import-group {
+  display: flex;
+  gap: 12px;
+}
+.import-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 18px;
+  border-radius: 10px;
+  border: 1px solid #ebeef5;
+  cursor: pointer;
+  transition: all 0.25s;
+  background: #fff;
+}
+.import-card:hover {
+  border-color: #c6d4ff;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+  transform: translateY(-1px);
+}
+.import-card-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  flex-shrink: 0;
+}
+.import-card-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #303133;
+}
+.import-card-desc {
+  font-size: 12px;
+  color: #909399;
+  margin-top: 2px;
+}
+
+/* 智能导入弹窗 */
+.smart-import-sections { }
+.smart-section { margin-bottom: 8px; }
+.smart-section-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #303133;
+}
+.smart-result { }
+.result-card {
+  padding: 16px;
+  background: linear-gradient(135deg, #f5f7fa, #f0f4ff);
+  border-radius: 10px;
+  margin-bottom: 12px;
+}
+.result-card h4 {
+  margin: 0 0 8px;
+  font-size: 16px;
+  color: #303133;
+}
+.result-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.result-facilities {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  margin-bottom: 8px;
+}
+.result-highlights {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.highlight-tag {
+  background: linear-gradient(135deg, #fff3e0, #ffe0b2);
+  color: #e65100;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+}
+.result-images {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+.result-img-wrap {
+  position: relative;
+  display: inline-block;
+}
+.result-img {
+  width: 90px;
+  height: 68px;
+  border-radius: 6px;
+  object-fit: cover;
+}
+.cover-badge {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  background: #f56c6c;
+  color: #fff;
+  font-size: 10px;
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+.cat-badge {
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  background: rgba(0,0,0,0.55);
+  color: #fff;
+  font-size: 10px;
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+.more-imgs {
+  color: #909399;
+  font-size: 13px;
+}
+
+/* 通用 */
 .image-section { width: 100%; }
 .image-input { display: flex; gap: 8px; }
 .image-list { margin-top: 12px; display: flex; flex-direction: column; gap: 8px; }
 .image-item { display: flex; align-items: center; gap: 8px; padding: 8px; background: #fafafa; border-radius: 6px; }
 .import-preview { max-height: 400px; overflow-y: auto; }
 .preview-item { margin-bottom: 16px; font-size: 14px; }
-.struct-grid { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 8px; }
+.struct-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
 .struct-grid span { background: #f0f9ff; color: #1890ff; padding: 4px 12px; border-radius: 12px; font-size: 12px; }
 .preview-imgs { display: flex; flex-wrap: wrap; margin-top: 8px; align-items: center; }
 </style>
