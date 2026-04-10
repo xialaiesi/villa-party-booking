@@ -9,6 +9,7 @@
         <nav class="nav">
           <router-link to="/">首页</router-link>
           <router-link to="/search">全部别墅</router-link>
+          <router-link to="/album">共享相册</router-link>
           <router-link to="/order">我的订单</router-link>
         </nav>
         <div class="user-area">

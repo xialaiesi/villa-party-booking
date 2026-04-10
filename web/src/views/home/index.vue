@@ -13,7 +13,7 @@
           <el-button type="primary" size="large" @click="goSearch">搜索</el-button>
         </div>
         <div class="scene-tags">
-          <span v-for="(t, i) in scenes" :key="t" :class="'tag-' + (i % 6)" @click="goSearch(t)">{{ t }}</span>
+          <span v-for="(t, i) in scenes" :key="t" :class="'tag-' + (Number(i) % 6)" @click="goSearch(t)">{{ t }}</span>
         </div>
       </div>
     </div>

@@ -11,6 +11,8 @@ const routes = [
       { path: 'booking/:id', component: () => import('../views/booking/index.vue'), meta: { title: '确认预订', auth: true } },
       { path: 'order', component: () => import('../views/order/index.vue'), meta: { title: '我的订单', auth: true } },
       { path: 'order/:id', component: () => import('../views/order/detail.vue'), meta: { title: '订单详情', auth: true } },
+      { path: 'album', component: () => import('../views/album/index.vue'), meta: { title: '共享相册' } },
+      { path: 'album/:id', component: () => import('../views/album/detail.vue'), meta: { title: '相册详情' } },
       { path: 'mine', component: () => import('../views/mine/index.vue'), meta: { title: '个人中心', auth: true } },
     ],
   },
