@@ -2,15 +2,20 @@
   <div class="container villa-detail" v-if="villa">
     <!-- 图片画廊 -->
     <div class="gallery">
-      <div class="main-image">
+      <div class="main-image" @mousedown="onDragStart" @mousemove="onDragMove" @mouseup="onDragEnd" @mouseleave="onDragEnd">
         <el-image
           :src="resolveImg(currentImage || '')"
           fit="cover"
           :preview-src-list="allImages"
           :initial-index="currentIndex"
           preview-teleported
-          style="width: 100%; height: 500px; border-radius: 12px;"
+          style="width: 100%; height: 500px; border-radius: 12px; user-select: none;"
         />
+        <!-- 左右箭头 -->
+        <button class="gallery-arrow left" @click.stop="prevImage" v-if="totalImages > 1">‹</button>
+        <button class="gallery-arrow right" @click.stop="nextImage" v-if="totalImages > 1">›</button>
+        <!-- 计数器 -->
+        <div class="gallery-counter" v-if="totalImages > 1">{{ currentIndex + 1 }} / {{ totalImages }}</div>
       </div>
       <div class="thumbnails">
         <div
@@ -22,7 +27,7 @@
         >
           <img :src="thumbUrl(img.url)" />
         </div>
-        <div class="thumb view-all" v-if="villa.images?.length > 5">
+        <div class="thumb view-all" v-if="villa.images?.length > 5" @click="currentIndex = 5">
           <span>+{{ villa.images.length - 5 }}</span>
         </div>
       </div>
@@ -136,7 +141,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { getVilla, getVillaReviews } from '../../api/villa';
 import { detailUrl, thumbUrl } from '../../utils/request';
@@ -152,6 +157,41 @@ const villa = ref<any>(null);
 const reviews = ref<any[]>([]);
 const reviewStats = ref({ avgRating: '0.0', total: 0 });
 const currentIndex = ref(0);
+
+const totalImages = computed(() => villa.value?.images?.length || 0);
+
+function prevImage() {
+  if (totalImages.value > 0) {
+    currentIndex.value = (currentIndex.value - 1 + totalImages.value) % totalImages.value;
+  }
+}
+function nextImage() {
+  if (totalImages.value > 0) {
+    currentIndex.value = (currentIndex.value + 1) % totalImages.value;
+  }
+}
+
+// 键盘左右切换
+function onKeydown(e: KeyboardEvent) {
+  if (e.key === 'ArrowLeft') prevImage();
+  if (e.key === 'ArrowRight') nextImage();
+}
+onMounted(() => window.addEventListener('keydown', onKeydown));
+onUnmounted(() => window.removeEventListener('keydown', onKeydown));
+
+// 鼠标拖动切换
+let dragStartX = 0;
+let isDragging = false;
+function onDragStart(e: MouseEvent) { dragStartX = e.clientX; isDragging = true; }
+function onDragMove(e: MouseEvent) { if (isDragging) e.preventDefault(); }
+function onDragEnd(e: MouseEvent) {
+  if (!isDragging) return;
+  isDragging = false;
+  const diff = e.clientX - dragStartX;
+  if (Math.abs(diff) > 60) {
+    if (diff > 0) prevImage(); else nextImage();
+  }
+}
 
 const currentImage = computed(() => {
   if (!villa.value?.images?.length) return villa.value?.coverImage;
@@ -190,7 +230,29 @@ function formatDate(d: string) {
 .villa-detail { padding: 30px 0 60px; }
 
 .gallery { margin-bottom: 30px; }
-.main-image { margin-bottom: 12px; }
+.main-image { margin-bottom: 12px; position: relative; cursor: grab; }
+.main-image:active { cursor: grabbing; }
+
+.gallery-arrow {
+  position: absolute; top: 50%; transform: translateY(-50%);
+  width: 44px; height: 44px; border-radius: 50%;
+  background: rgba(0,0,0,0.45); color: #fff;
+  border: none; font-size: 28px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.2s; opacity: 0; z-index: 2;
+  line-height: 1;
+}
+.main-image:hover .gallery-arrow { opacity: 1; }
+.gallery-arrow:hover { background: rgba(0,0,0,0.7); transform: translateY(-50%) scale(1.1); }
+.gallery-arrow.left { left: 16px; }
+.gallery-arrow.right { right: 16px; }
+
+.gallery-counter {
+  position: absolute; bottom: 16px; right: 16px;
+  background: rgba(0,0,0,0.5); color: #fff;
+  padding: 4px 14px; border-radius: 16px;
+  font-size: 13px; font-weight: 500; z-index: 2;
+}
 .thumbnails { display: flex; gap: 12px; }
 .thumb {
   width: 120px; height: 80px; border-radius: 8px;
