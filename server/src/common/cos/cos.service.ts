@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import * as COS from 'cos-nodejs-sdk-v5';
+import COS from 'cos-nodejs-sdk-v5';
 import { extname } from 'path';
 
 @Injectable()
