@@ -98,6 +98,17 @@
         <!-- 评价 -->
         <div class="card">
           <h3>💬 用户评价 ({{ reviewStats.total }})</h3>
+          <!-- 视频测评 -->
+          <div class="video-reviews" v-if="videoReviews.length">
+            <div class="section-title">真实入住视频</div>
+            <div class="video-list">
+              <div class="video-item" v-for="v in videoReviews" :key="v.url" @click="playVideo(v.url)">
+                <video :src="v.url" class="video-cover" preload="metadata" />
+                <div class="play-icon">▶</div>
+                <div class="video-duration" v-if="v.duration">{{ formatDuration(v.duration) }}</div>
+              </div>
+            </div>
+          </div>
           <div v-if="reviews.length">
             <div class="review" v-for="r in reviews" :key="r.id">
               <img v-if="r.user?.avatar" :src="r.user.avatar" class="avatar" />
@@ -110,6 +121,13 @@
                   </span>
                 </div>
                 <div class="review-content">{{ r.content }}</div>
+                <!-- 评价中的视频 -->
+                <div class="review-videos" v-if="r.videos?.length">
+                  <div class="video-thumb" v-for="(v, i) in r.videos" :key="i" @click="playVideo(v.url)">
+                    <video :src="v.url" />
+                    <div class="play-icon">▶</div>
+                  </div>
+                </div>
                 <div class="review-date">{{ formatDate(r.createdAt) }}</div>
                 <div class="review-reply-box" v-if="r.reply">
                   <b>商家回复：</b>{{ r.reply }}
@@ -236,6 +254,28 @@ function goBooking() {
 function formatDate(d: string) {
   return new Date(d).toLocaleDateString();
 }
+
+const videoReviews = computed(() => {
+  const arr: any[] = [];
+  reviews.value.forEach(r => {
+    if (r.videos?.length) {
+      r.videos.forEach((v: any) => {
+        arr.push({ url: v.url, duration: v.duration });
+      });
+    }
+  });
+  return arr;
+});
+
+function playVideo(url: string) {
+  window.open(url, '_blank');
+}
+
+function formatDuration(s: number) {
+  const m = Math.floor(s / 60);
+  const sec = s % 60;
+  return `${m}:${sec.toString().padStart(2, '0')}`;
+}
 </script>
 
 <style scoped>
@@ -354,6 +394,19 @@ function formatDate(d: string) {
   font-size: 13px; color: #64748b; line-height: 1.6; border-left: 3px solid #3b82f6;
 }
 .review-reply-box b { color: #3b82f6; }
+
+.video-reviews { margin-bottom: 20px; padding-bottom: 20px; border-bottom: 1px solid #f5f5f5; }
+.section-title { font-size: 14px; color: #666; margin-bottom: 12px; font-weight: 600; }
+.video-list { display: flex; gap: 12px; overflow-x: auto; }
+.video-item { position: relative; width: 160px; height: 100px; border-radius: 8px; overflow: hidden; cursor: pointer; flex-shrink: 0; }
+.video-cover { width: 100%; height: 100%; object-fit: cover; }
+.play-icon { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 36px; height: 36px; background: rgba(0,0,0,0.5); border-radius: 50%; color: #fff; font-size: 14px; display: flex; align-items: center; justify-content: center; }
+.video-duration { position: absolute; bottom: 6px; right: 6px; background: rgba(0,0,0,0.6); color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 11px; }
+
+.review-videos { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+.review-videos .video-thumb { position: relative; width: 80px; height: 60px; border-radius: 6px; overflow: hidden; cursor: pointer; }
+.review-videos video { width: 100%; height: 100%; object-fit: cover; }
+.review-videos .play-icon { width: 24px; height: 24px; font-size: 10px; }
 
 .side-col { position: sticky; top: 100px; align-self: start; }
 .booking-card {

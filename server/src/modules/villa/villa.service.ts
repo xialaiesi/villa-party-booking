@@ -163,9 +163,10 @@ export class VillaService {
   }
 
   async getReviews(villaId: number, page = 1, pageSize = 10) {
+    const where: any = { villaId };
     const [list, total, stats] = await Promise.all([
       this.prisma.review.findMany({
-        where: { villaId },
+        where,
         orderBy: { createdAt: 'desc' },
         skip: (page - 1) * pageSize,
         take: pageSize,
@@ -173,7 +174,7 @@ export class VillaService {
           user: { select: { nickname: true, avatar: true } },
         },
       }),
-      this.prisma.review.count({ where: { villaId } }),
+      this.prisma.review.count({ where }),
       this.prisma.review.aggregate({
         _avg: { rating: true },
         where: { villaId },
@@ -181,17 +182,25 @@ export class VillaService {
     ]);
 
     return {
-      list: list.map((r: any) => ({
-        id: Number(r.id),
-        userId: Number(r.userId),
-        rating: r.rating,
-        content: r.content,
-        images: r.images ? JSON.parse(r.images) : [],
-        reply: r.reply,
-        repliedAt: r.repliedAt,
-        createdAt: r.createdAt,
-        user: r.user,
-      })),
+      list: list.map((r: any) => {
+        // 过滤待审核的视频（videoStatus=0 不展示）
+        let videos = r.videos ? JSON.parse(r.videos) : [];
+        if (r.videoStatus === 0) {
+          videos = [];
+        }
+        return {
+          id: Number(r.id),
+          userId: Number(r.userId),
+          rating: r.rating,
+          content: r.content,
+          images: r.images ? JSON.parse(r.images) : [],
+          videos,
+          reply: r.reply,
+          repliedAt: r.repliedAt,
+          createdAt: r.createdAt,
+          user: r.user,
+        };
+      }),
       total,
       page,
       pageSize,

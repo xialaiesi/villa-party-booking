@@ -171,7 +171,9 @@ function goAlbum() {
 }
 
 function goReview() {
-  uni.showToast({ title: '评价功能开发中', icon: 'none' });
+  if (order.value) {
+    uni.navigateTo({ url: `/pages/review/index?orderId=${order.value.id}` });
+  }
 }
 
 function callPhone() {

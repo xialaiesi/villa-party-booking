@@ -1,10 +1,10 @@
 import request from '../utils/request';
 
-export function createReview(data: { orderId: number; rating: number; content?: string; images?: string[] }) {
+export function createReview(data: { orderId: number; rating: number; content?: string; images?: string[]; videos?: string[] }) {
   return request.post('/api/reviews', data);
 }
 
-export function updateReview(id: number, data: { rating?: number; content?: string }) {
+export function updateReview(id: number, data: { rating?: number; content?: string; images?: string[]; videos?: string[] }) {
   return request.put(`/api/reviews/${id}`, data);
 }
 

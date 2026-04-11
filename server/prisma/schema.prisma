@@ -294,6 +294,8 @@ model Review {
   rating     Int       @db.TinyInt       // 1-5 星
   content    String?   @db.Text
   images     String?   @db.Text          // JSON 图片数组
+  videos     String?   @db.Text          // JSON 视频数组: [{"url": "...", "cover": "...", "duration": 30}]
+  videoStatus Int      @default(0) @map("video_status") @db.TinyInt // 0-待审核 1-已通过 2-已拒绝
   reply      String?   @db.Text          // 商家回复
   repliedAt  DateTime? @map("replied_at")
   updatedAt  DateTime? @updatedAt @map("updated_at")

@@ -61,6 +61,10 @@
           <el-icon><PictureFilled /></el-icon>
           <span>共享相册</span>
         </el-menu-item>
+        <el-menu-item index="/video-review">
+          <el-icon><VideoCamera /></el-icon>
+          <span>视频审核</span>
+        </el-menu-item>
 
         <!-- 财务中心 -->
         <el-menu-item index="/finance">
@@ -118,7 +122,7 @@ import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import {
   DataAnalysis, House, Calendar, ShoppingBag, Document, Setting,
-  List, Present, Service, Star, OfficeBuilding, Money, Brush, PictureFilled, Bell,
+  List, Present, Service, Star, OfficeBuilding, Money, Brush, PictureFilled, Bell, VideoCamera,
 } from '@element-plus/icons-vue';
 import { ElMessage } from 'element-plus';
 import { useUserStore } from '../../store/user';

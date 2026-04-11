@@ -83,6 +83,14 @@
     {
       "path": "pages/message/index",
       "style": { "navigationBarTitleText": "消息中心" }
+    },
+    {
+      "path": "pages/common/video",
+      "style": { "navigationBarTitleText": "视频播放" }
+    },
+    {
+      "path": "pages/review/index",
+      "style": { "navigationBarTitleText": "评价" }
     }
   ],
   "globalStyle": {

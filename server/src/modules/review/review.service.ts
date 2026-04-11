@@ -6,7 +6,7 @@ export class ReviewService {
   constructor(private prisma: PrismaService) {}
 
   /** 用户创建评价（订单状态=5 已完成） */
-  async create(userId: number, data: { orderId: number; rating: number; content?: string; images?: string[] }) {
+  async create(userId: number, data: { orderId: number; rating: number; content?: string; images?: string[]; videos?: string[] }) {
     if (!data.rating || data.rating < 1 || data.rating > 5) {
       throw new BadRequestException('评分须为 1-5');
     }
@@ -20,6 +20,10 @@ export class ReviewService {
     const existing = await this.prisma.review.findFirst({ where: { orderId: data.orderId } });
     if (existing) throw new BadRequestException('该订单已评价');
 
+    // 视频需审核，默认待审核
+    const hasVideo = data.videos && data.videos.length > 0;
+    const videoStatus = hasVideo ? 0 : undefined;
+
     const review = await this.prisma.review.create({
       data: {
         orderId: data.orderId,
@@ -28,6 +32,8 @@ export class ReviewService {
         rating: data.rating,
         content: data.content || '',
         images: data.images?.length ? JSON.stringify(data.images) : null,
+        videos: data.videos?.length ? JSON.stringify(data.videos) : null,
+        videoStatus,
       },
       include: { user: { select: { nickname: true, avatar: true } } },
     });
@@ -36,7 +42,7 @@ export class ReviewService {
   }
 
   /** 用户编辑评价（仅本人） */
-  async update(reviewId: number, userId: number, data: { rating?: number; content?: string; images?: string[] }) {
+  async update(reviewId: number, userId: number, data: { rating?: number; content?: string; images?: string[]; videos?: string[] }) {
     const review = await this.prisma.review.findUnique({ where: { id: reviewId } });
     if (!review) throw new NotFoundException('评价不存在');
     if (Number(review.userId) !== userId) throw new ForbiddenException('无权编辑');
@@ -47,6 +53,7 @@ export class ReviewService {
         rating: data.rating ?? review.rating,
         content: data.content ?? review.content,
         images: data.images ? JSON.stringify(data.images) : review.images,
+        videos: data.videos ? JSON.stringify(data.videos) : review.videos,
       },
       include: { user: { select: { nickname: true, avatar: true } } },
     }));
@@ -89,6 +96,69 @@ export class ReviewService {
     return { success: true };
   }
 
+  /** 审核视频（通过/拒绝） */
+  async reviewVideo(reviewId: number, approved: boolean, reason?: string, coverUrl?: string) {
+    const review = await this.prisma.review.findUnique({ where: { id: reviewId } });
+    if (!review) throw new NotFoundException('评价不存在');
+    if (!review.videos) throw new BadRequestException('评价中无视频');
+
+    const videoStatus = approved ? 1 : 2;
+    // 更新视频封面
+    let videos = review.videos ? JSON.parse(review.videos) : [];
+    if (coverUrl && videos.length > 0) {
+      videos[0].cover = coverUrl;
+    }
+
+    return this.format(await this.prisma.review.update({
+      where: { id: reviewId },
+      data: {
+        videoStatus,
+        videos: JSON.stringify(videos),
+      },
+    }));
+  }
+
+  /** 更新视频封面 */
+  async updateVideoCover(reviewId: number, coverUrl: string, videoIndex = 0) {
+    const review = await this.prisma.review.findUnique({ where: { id: reviewId } });
+    if (!review) throw new NotFoundException('评价不存在');
+
+    let videos = review.videos ? JSON.parse(review.videos) : [];
+    if (videos[videoIndex]) {
+      videos[videoIndex].cover = coverUrl;
+    }
+
+    await this.prisma.review.update({
+      where: { id: reviewId },
+      data: { videos: JSON.stringify(videos) },
+    });
+
+    return { success: true };
+  }
+
+  /** 获取待审核的视频评价列表 */
+  async getPendingVideoReviews(page = 1, pageSize = 20) {
+    const where = { videos: { not: null }, videoStatus: 0 };
+    const [list, total] = await Promise.all([
+      this.prisma.review.findMany({
+        where,
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          user: { select: { nickname: true, avatar: true } },
+          villa: { select: { name: true } },
+        },
+      }),
+      this.prisma.review.count({ where }),
+    ]);
+
+    return {
+      list: list.map(r => this.format(r)),
+      total,
+    };
+  }
+
   /** 检查订单是否已评价 */
   async hasReview(orderId: number) {
     const review = await this.prisma.review.findFirst({ where: { orderId } });
@@ -103,6 +173,8 @@ export class ReviewService {
       userId: Number(r.userId),
       villaId: Number(r.villaId),
       images: r.images ? JSON.parse(r.images) : [],
+      videos: r.videos ? JSON.parse(r.videos) : [],
+      videoStatus: r.videoStatus ?? 0,
     };
   }
 }

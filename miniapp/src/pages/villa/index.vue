@@ -104,6 +104,17 @@
         <text class="card-title">💬 用户评价 ({{ reviewStats.total }})</text>
         <text class="more-link" v-if="reviews.length > 3" @tap="showAllReviews = true">查看全部</text>
       </view>
+      <!-- 视频测评 -->
+      <view class="video-section" v-if="videoReviews.length">
+        <view class="section-title">真实入住视频</view>
+        <scroll-view scroll-x class="video-scroll">
+          <view class="video-item" v-for="(v, i) in videoReviews" :key="i" @tap="playVideo(v.url)">
+            <video :src="v.url" class="video-cover" />
+            <view class="play-icon">▶</view>
+            <view class="video-duration" v-if="v.duration">{{ formatDuration(v.duration) }}</view>
+          </view>
+        </scroll-view>
+      </view>
       <view v-if="reviews.length">
         <view class="review-item" v-for="r in reviews.slice(0, showAllReviews ? reviews.length : 3)" :key="r.id">
           <view class="review-header">
@@ -117,6 +128,13 @@
             <text class="review-date">{{ formatDate(r.createdAt) }}</text>
           </view>
           <text class="review-content">{{ r.content }}</text>
+          <!-- 评价中的视频 -->
+          <view class="review-videos" v-if="r.videos?.length">
+            <view class="video-thumb" v-for="(v, i) in r.videos" :key="i" @tap="playVideo(v.url)">
+              <video :src="v.url" />
+              <view class="play-icon small">▶</view>
+            </view>
+          </view>
         </view>
       </view>
       <view v-else class="no-review">
@@ -231,6 +249,30 @@ function goPlan(id: number) {
 function goPlanList() {
   uni.navigateTo({ url: '/pages/plan/index' });
 }
+
+const videoReviews = computed(() => {
+  const arr: any[] = [];
+  reviews.value.forEach(r => {
+    if (r.videos?.length) {
+      r.videos.forEach((v: any) => {
+        arr.push({ url: v.url, duration: v.duration });
+      });
+    }
+  });
+  return arr;
+});
+
+function playVideo(url: string) {
+  uni.navigateTo({
+    url: `/pages/common/video?url=${encodeURIComponent(url)}`,
+  });
+}
+
+function formatDuration(s: number) {
+  const m = Math.floor(s / 60);
+  const sec = s % 60;
+  return `${m}:${sec.toString().padStart(2, '0')}`;
+}
 </script>
 
 <style lang="scss">
@@ -320,6 +362,33 @@ function goPlanList() {
 .review-date { font-size: 22rpx; color: #999; }
 .review-content { font-size: 26rpx; color: #666; line-height: 1.6; margin-top: 12rpx; display: block; }
 .no-review { text-align: center; padding: 30rpx 0; color: #999; font-size: 24rpx; }
+
+.video-section { margin-bottom: 20rpx; padding-bottom: 20rpx; border-bottom: 1px solid #f5f5f5; }
+.video-section .section-title { font-size: 26rpx; color: #666; margin-bottom: 16rpx; font-weight: 600; }
+.video-scroll { white-space: nowrap; }
+.video-section .video-item {
+  display: inline-block; width: 240rpx; height: 160rpx; margin-right: 16rpx;
+  border-radius: 12rpx; overflow: hidden; position: relative; vertical-align: top;
+}
+.video-section .video-cover { width: 100%; height: 100%; }
+.video-section .play-icon {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  width: 56rpx; height: 56rpx; background: rgba(0,0,0,0.5); border-radius: 50%;
+  color: #fff; font-size: 24rpx; display: flex; align-items: center; justify-content: center;
+}
+.video-section .video-duration {
+  position: absolute; bottom: 8rpx; right: 8rpx; background: rgba(0,0,0,0.6); color: #fff;
+  padding: 2rpx 8rpx; border-radius: 4rpx; font-size: 20rpx;
+}
+
+.review-videos { display: flex; gap: 12rpx; margin-top: 12rpx; flex-wrap: wrap; }
+.review-videos .video-thumb {
+  position: relative; width: 120rpx; height: 90rpx; border-radius: 8rpx; overflow: hidden;
+}
+.review-videos video { width: 100%; height: 100%; object-fit: cover; }
+.review-videos .play-icon.small {
+  width: 36rpx; height: 36rpx; font-size: 18rpx;
+}
 
 .bottom-bar {
   position: fixed; bottom: 0; left: 0; right: 0; background: #fff;

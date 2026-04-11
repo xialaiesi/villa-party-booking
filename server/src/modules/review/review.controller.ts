@@ -10,7 +10,7 @@ export class ReviewController {
   @Post('reviews')
   async create(
     @CurrentUser('sub') userId: number,
-    @Body() data: { orderId: number; rating: number; content?: string; images?: string[] },
+    @Body() data: { orderId: number; rating: number; content?: string; images?: string[]; videos?: string[] },
   ) {
     return this.service.create(userId, data);
   }
@@ -20,7 +20,7 @@ export class ReviewController {
   async update(
     @Param('id', ParseIntPipe) id: number,
     @CurrentUser('sub') userId: number,
-    @Body() data: { rating?: number; content?: string; images?: string[] },
+    @Body() data: { rating?: number; content?: string; images?: string[]; videos?: string[] },
   ) {
     return this.service.update(id, userId, data);
   }
@@ -63,5 +63,23 @@ export class ReviewController {
       return this.service.delete(id, req.user?.sub, false);
     }
     return this.service.adminDelete(id);
+  }
+
+  /** 审核视频（通过/拒绝） */
+  @Post('admin/reviews/:id/video-review')
+  async reviewVideo(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: { approved: boolean; reason?: string },
+  ) {
+    return this.service.reviewVideo(id, body.approved, body.reason);
+  }
+
+  /** 获取待审核视频列表 */
+  @Get('admin/reviews/pending-videos')
+  async getPendingVideos(
+    @Query('page', ParseIntPipe) page = 1,
+    @Query('pageSize', ParseIntPipe) pageSize = 20,
+  ) {
+    return this.service.getPendingVideoReviews(page, pageSize);
   }
 }
