@@ -100,7 +100,8 @@
           <h3>💬 用户评价 ({{ reviewStats.total }})</h3>
           <div v-if="reviews.length">
             <div class="review" v-for="r in reviews" :key="r.id">
-              <img :src="r.user?.avatar || '/vite.svg'" class="avatar" />
+              <img v-if="r.user?.avatar" :src="r.user.avatar" class="avatar" />
+              <div v-else class="avatar avatar-letter">{{ (r.user?.nickname || '用').charAt(0) }}</div>
               <div class="review-body">
                 <div class="review-header">
                   <span class="review-name">{{ r.user?.nickname || '用户' }}</span>
@@ -340,6 +341,7 @@ function formatDate(d: string) {
 .review { display: flex; gap: 16px; padding: 20px 0; border-bottom: 1px solid #f5f5f5; }
 .review:last-child { border-bottom: none; }
 .avatar { width: 48px; height: 48px; border-radius: 50%; }
+.avatar-letter { display: flex; align-items: center; justify-content: center; background: #e0e7ff; color: #4f46e5; font-size: 20px; font-weight: 600; }
 .review-body { flex: 1; }
 .review-header { display: flex; gap: 12px; align-items: center; }
 .review-name { font-weight: bold; color: #333; }

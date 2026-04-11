@@ -293,6 +293,7 @@ export class AlbumService {
       id: Number(album.id),
       orderId: Number(album.orderId),
       creatorId: Number(album.creatorId),
+      coverUrl: album.order?.villa?.coverImage || null,
       photos: album.photos?.map((p: any) => ({
         ...p,
         id: Number(p.id),

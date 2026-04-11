@@ -1,7 +1,8 @@
 <template>
   <div class="container mine-page">
     <div class="header">
-      <img :src="userStore.info?.avatar || '/vite.svg'" class="avatar" />
+      <img v-if="userStore.info?.avatar" :src="userStore.info.avatar" class="avatar" />
+      <div v-else class="avatar avatar-letter">{{ (userStore.info?.nickname || '我').charAt(0) }}</div>
       <div class="info">
         <div class="nickname">{{ userStore.info?.nickname || '用户' }}</div>
         <div class="phone">{{ userStore.info?.phone || '' }}</div>
@@ -52,6 +53,7 @@ function todo() { ElMessage.info('功能开发中'); }
   width: 80px; height: 80px; border-radius: 50%;
   background: #fff; border: 3px solid rgba(255,255,255,0.3);
 }
+.avatar-letter { display: flex; align-items: center; justify-content: center; background: #e0e7ff; color: #4f46e5; font-size: 32px; font-weight: 600; }
 .nickname { font-size: 22px; font-weight: bold; }
 .phone { font-size: 14px; opacity: 0.8; margin-top: 4px; }
 
