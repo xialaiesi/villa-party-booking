@@ -177,7 +177,7 @@ const siteConfig = reactive<Record<string, string>>({
 
 const scenes = computed(() => {
   try { return JSON.parse(siteConfig.scene_tags || '[]'); }
-  catch { return ['团建聚会', '生日派对', '朋友聚会', '亲子活动', '毕业趴', '闺蜜趴']; }
+  catch { return ['团建', '生日', '聚会', '亲子', '毕业趴', '闺蜜趴']; }
 });
 const heroStyle = computed(() => {
   if (siteConfig.hero_image) {
