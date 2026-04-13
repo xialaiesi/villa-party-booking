@@ -73,7 +73,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
-import { getPendingVideoReviews, reviewVideo } from '../api/review';
+import { getPendingVideoReviews, reviewVideo } from '../../api/review';
 
 const loading = ref(false);
 const list = ref<any[]>([]);

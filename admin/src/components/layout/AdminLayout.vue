@@ -148,8 +148,8 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import {
-  DataAnalysis, House, Calendar, ShoppingBag, Document, Setting,
-  List, Present, Service, Star, OfficeBuilding, Money, Brush, PictureFilled, Bell, VideoCamera,
+  DataAnalysis, House, ShoppingBag, Setting,
+  Present, PictureFilled, Bell,
 } from '@element-plus/icons-vue';
 import { ElMessage } from 'element-plus';
 import { useUserStore } from '../../store/user';

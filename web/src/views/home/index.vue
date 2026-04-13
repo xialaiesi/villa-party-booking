@@ -179,10 +179,6 @@ const scenes = computed(() => {
   try { return JSON.parse(siteConfig.scene_tags || '[]'); }
   catch { return ['团建聚会', '生日派对', '朋友聚会', '亲子活动', '毕业趴', '闺蜜趴']; }
 });
-const customBanners = computed(() => {
-  try { return JSON.parse(siteConfig.banners || '[]').filter((b: any) => b.image); }
-  catch { return []; }
-});
 const heroStyle = computed(() => {
   if (siteConfig.hero_image) {
     return { backgroundImage: `url(${siteConfig.hero_image})`, backgroundSize: 'cover', backgroundPosition: 'center' };
