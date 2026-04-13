@@ -175,9 +175,14 @@ const siteConfig = reactive<Record<string, string>>({
   banners: '[]', scene_tags: '[]', footer_text: '',
 });
 
+// 显示名 → 搜索标签的映射
+const sceneTagMap: Record<string, string> = {
+  '团建聚会': '团建', '生日派对': '生日', '朋友聚会': '聚会',
+  '亲子活动': '亲子', '毕业趴': '毕业趴', '闺蜜趴': '闺蜜趴',
+};
 const scenes = computed(() => {
   try { return JSON.parse(siteConfig.scene_tags || '[]'); }
-  catch { return ['团建', '生日', '聚会', '亲子', '毕业趴', '闺蜜趴']; }
+  catch { return ['团建聚会', '生日派对', '朋友聚会', '亲子活动', '毕业趴', '闺蜜趴']; }
 });
 const heroStyle = computed(() => {
   if (siteConfig.hero_image) {
@@ -202,7 +207,7 @@ onMounted(async () => {
 
 function goSearch(tag?: any) {
   const p: any = {};
-  if (typeof tag === 'string') p.tag = tag;
+  if (typeof tag === 'string') p.tag = sceneTagMap[tag] || tag;
   else if (keyword.value) p.keyword = keyword.value;
   router.push({ path: '/search', query: p });
 }
