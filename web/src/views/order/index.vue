@@ -12,8 +12,15 @@
     <div v-if="orders.length" class="order-list">
       <div class="order-card" v-for="o in orders" :key="o.id" @click="goDetail(o.id)">
         <div class="order-header">
-          <span class="order-no">订单号：{{ o.orderNo }}</span>
-          <el-tag :type="statusType(o.status)">{{ statusText(o.status) }}</el-tag>
+          <span class="order-no">订单号：{{ o.orderNo }}
+            <span class="copy-btn" @click.stop="copyOrderNo(o.orderNo)" title="复制订单号">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+            </span>
+          </span>
+          <div class="order-tags">
+            <el-tag v-if="o.status === 5 && !reviewStatusMap[o.id]" type="warning" size="small" class="review-tag">待评价</el-tag>
+            <el-tag :type="statusType(o.status)">{{ statusText(o.status) }}</el-tag>
+          </div>
         </div>
         <div class="order-body">
           <img :src="resolveImg(o.villa?.coverImage)" />
@@ -27,6 +34,9 @@
             <div class="price-unit">总计</div>
           </div>
         </div>
+        <div class="order-footer" v-if="o.status === 5 && !reviewStatusMap[o.id]">
+          <el-button type="warning" size="small" round @click.stop="goReview(o.id)">写评价</el-button>
+        </div>
       </div>
     </div>
     <el-empty v-else description="暂无订单" />
@@ -36,13 +46,16 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
+import { ElMessage } from 'element-plus';
 import { listOrders } from '../../api/order';
+import { checkReview } from '../../api/review';
 import { thumbUrl } from '../../utils/request';
 
 const router = useRouter();
 const resolveImg = thumbUrl;
 const orders = ref<any[]>([]);
 const activeTab = ref('');
+const reviewStatusMap = ref<Record<number, boolean>>({});
 
 onMounted(() => loadData());
 
@@ -57,10 +70,44 @@ async function loadData() {
     list = list.filter((o: any) => [1, 2, 3, 4].includes(o.status));
   }
   orders.value = list;
+  // 检查已完成订单的评价状态
+  const completedOrders = list.filter((o: any) => o.status === 5);
+  const map: Record<number, boolean> = {};
+  await Promise.all(completedOrders.map(async (o: any) => {
+    try {
+      const res: any = await checkReview(o.id);
+      map[o.id] = !!res.review;
+    } catch { map[o.id] = false; }
+  }));
+  reviewStatusMap.value = map;
+}
+
+function copyOrderNo(orderNo: string) {
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(orderNo).then(() => {
+      ElMessage.success('订单号已复制');
+    }).catch(() => {
+      const ta = document.createElement('textarea');
+      ta.value = orderNo; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select(); document.execCommand('copy');
+      document.body.removeChild(ta);
+      ElMessage.success('订单号已复制');
+    });
+  } else {
+    const ta = document.createElement('textarea');
+    ta.value = orderNo; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select(); document.execCommand('copy');
+    document.body.removeChild(ta);
+    ElMessage.success('订单号已复制');
+  }
 }
 
 function goDetail(id: number) {
   router.push(`/order/${id}`);
+}
+
+function goReview(orderId: number) {
+  router.push(`/order/${orderId}#review`);
 }
 
 function statusText(s: number) {
@@ -86,7 +133,13 @@ function statusType(s: number): any {
   display: flex; justify-content: space-between; align-items: center;
   padding: 16px 24px; border-bottom: 1px solid #f5f5f5;
 }
-.order-no { font-size: 13px; color: #999; }
+.order-no { font-size: 13px; color: #999; display: inline-flex; align-items: center; }
+.copy-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  margin-left: 6px; padding: 3px; border-radius: 4px;
+  color: #94a3b8; cursor: pointer; transition: all 0.2s;
+}
+.copy-btn:hover { color: #409eff; background: #f0f7ff; }
 .order-body { display: flex; gap: 20px; padding: 20px 24px; align-items: center; }
 .order-body img { width: 140px; height: 100px; object-fit: cover; border-radius: 8px; }
 .order-info { flex: 1; }
@@ -96,4 +149,13 @@ function statusType(s: number): any {
 .order-price { text-align: right; }
 .price { font-size: 24px; color: #ff6b35; font-weight: bold; }
 .price-unit { font-size: 12px; color: #999; }
+.order-tags { display: flex; gap: 8px; align-items: center; }
+.review-tag { animation: pulse-review 2s infinite; }
+@keyframes pulse-review {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+.order-footer {
+  display: flex; justify-content: flex-end; padding: 0 24px 16px;
+}
 </style>

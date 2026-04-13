@@ -14,6 +14,7 @@ const routes = [
       { path: 'album', component: () => import('../views/album/index.vue'), meta: { title: '共享相册' } },
       { path: 'album/:id', component: () => import('../views/album/detail.vue'), meta: { title: '相册详情' } },
       { path: 'mine', component: () => import('../views/mine/index.vue'), meta: { title: '个人中心', auth: true } },
+      { path: 'help', component: () => import('../views/help/index.vue'), meta: { title: '帮助中心' } },
     ],
   },
   {

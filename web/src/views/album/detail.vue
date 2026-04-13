@@ -14,6 +14,9 @@
         </div>
       </div>
       <div class="header-actions">
+        <el-button v-if="album.userId === currentUserId" plain round @click="permissionDialogVisible = true">
+          权限设置
+        </el-button>
         <el-button @click="copyShareLink" type="primary" plain round>
           📋 复制分享链接
         </el-button>
@@ -29,11 +32,27 @@
       </div>
     </div>
 
-    <!-- 邀请码展示 -->
-    <div class="invite-card">
-      <span class="invite-label">邀请码</span>
-      <span class="invite-code">{{ album.inviteCode }}</span>
-      <span class="invite-tip">分享给朋友，一起上传聚会照片</span>
+    <!-- 邀请码分享卡片 -->
+    <div class="share-card">
+      <div class="share-card-header">
+        <span class="share-icon">&#127881;</span>
+        <span class="share-title">邀请朋友加入相册</span>
+      </div>
+      <div class="share-card-body">
+        <div class="share-code-block">
+          <span class="share-code-label">邀请码</span>
+          <span class="share-code-value">{{ album.inviteCode }}</span>
+        </div>
+        <div class="share-card-actions">
+          <el-button type="primary" round @click="copyInviteCode">
+            &#128203; 复制邀请码
+          </el-button>
+          <el-button type="success" round @click="copyShareLink">
+            &#128279; 复制分享链接
+          </el-button>
+        </div>
+        <div class="share-tip">分享邀请码或链接给朋友，一起上传聚会照片</div>
+      </div>
     </div>
 
     <!-- 照片瀑布流 -->
@@ -89,6 +108,30 @@
         </div>
       </div>
     </el-dialog>
+
+    <!-- 权限设置弹窗 -->
+    <el-dialog v-model="permissionDialogVisible" title="权限设置" width="400px" center>
+      <div class="permission-panel">
+        <div class="permission-desc">设置其他成员在相册中的操作权限</div>
+        <el-radio-group v-model="permissionMode" class="permission-options">
+          <el-radio value="upload" size="large">
+            <div class="perm-option">
+              <div class="perm-option-title">所有人可上传</div>
+              <div class="perm-option-desc">加入相册的成员可以上传照片</div>
+            </div>
+          </el-radio>
+          <el-radio value="view" size="large">
+            <div class="perm-option">
+              <div class="perm-option-title">仅查看</div>
+              <div class="perm-option-desc">成员只能查看相册，不能上传照片</div>
+            </div>
+          </el-radio>
+        </el-radio-group>
+        <div style="text-align: center; margin-top: 20px;">
+          <el-button type="primary" round @click="savePermission">保存设置</el-button>
+        </div>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
@@ -110,6 +153,8 @@ const currentUserId = ref<number>(0);
 const photoCommentVisible = ref(false);
 const selectedPhoto = ref<any>(null);
 const commentCounts = ref<Record<number, number>>({});
+const permissionDialogVisible = ref(false);
+const permissionMode = ref('upload');
 
 const selectedPhotoIndex = computed(() =>
   photos.value.findIndex((p: any) => p.id === selectedPhoto.value?.id)
@@ -186,11 +231,30 @@ async function handleUpload(file: File) {
 
 async function handleDelete(photoId: number) {
   try {
-    await ElMessageBox.confirm('确定删除这张照片？', '提示', { type: 'warning' });
+    await ElMessageBox.confirm(
+      '确定要删除这张照片吗？此操作不可恢复，删除后将无法找回。',
+      '删除确认',
+      {
+        type: 'warning',
+        confirmButtonText: '确认删除',
+        cancelButtonText: '取消',
+        confirmButtonClass: 'el-button--danger',
+      },
+    );
     await deletePhoto(photoId);
     ElMessage.success('已删除');
     await loadAlbum();
   } catch { /* cancelled */ }
+}
+
+function savePermission() {
+  permissionDialogVisible.value = false;
+  ElMessage.info('功能开发中，敬请期待');
+}
+
+function copyInviteCode() {
+  copyText(album.value.inviteCode);
+  ElMessage.success('邀请码已复制，发给朋友即可加入相册');
 }
 
 function copyShareLink() {
@@ -237,23 +301,50 @@ function formatDate(d: string) {
 }
 .header-actions { display: flex; gap: 10px; flex-shrink: 0; }
 
-/* 邀请码卡片 */
-.invite-card {
-  display: flex; align-items: center; gap: 16px;
-  padding: 16px 24px; border-radius: 12px; margin-bottom: 32px;
-  background: linear-gradient(135deg, #f0f4ff, #e8f0fe);
-  border: 1px solid #c7d7fe;
+/* 分享卡片 */
+.share-card {
+  border-radius: 16px; margin-bottom: 32px; overflow: hidden;
+  background: linear-gradient(135deg, #eff6ff, #dbeafe);
+  border: 1px solid #93c5fd;
+  box-shadow: 0 4px 16px rgba(59, 130, 246, 0.1);
 }
-.invite-label { font-size: 13px; color: #64748b; }
-.invite-code {
-  font-size: 22px; font-weight: 800; color: #3b82f6;
-  letter-spacing: 4px; font-family: monospace;
+.share-card-header {
+  padding: 16px 24px;
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  color: #fff; display: flex; align-items: center; gap: 10px;
 }
-.invite-tip { font-size: 12px; color: #94a3b8; margin-left: auto; }
+.share-icon { font-size: 22px; }
+.share-title { font-size: 16px; font-weight: 700; }
+.share-card-body { padding: 24px; text-align: center; }
+.share-code-block {
+  display: flex; align-items: center; justify-content: center; gap: 12px;
+  margin-bottom: 20px;
+}
+.share-code-label {
+  font-size: 13px; color: #64748b; background: #fff;
+  padding: 4px 10px; border-radius: 6px;
+}
+.share-code-value {
+  font-size: 28px; font-weight: 800; color: #1e40af;
+  letter-spacing: 6px; font-family: monospace;
+}
+.share-card-actions {
+  display: flex; gap: 12px; justify-content: center; margin-bottom: 16px;
+}
+.share-tip { font-size: 13px; color: #64748b; }
 
 /* 照片瀑布流 */
 .photo-grid {
   columns: 4; column-gap: 16px;
+}
+@media (max-width: 1200px) {
+  .photo-grid { columns: 3; }
+}
+@media (max-width: 768px) {
+  .photo-grid { columns: 2; }
+}
+@media (max-width: 480px) {
+  .photo-grid { columns: 1; }
 }
 .photo-item {
   break-inside: avoid; margin-bottom: 16px;
@@ -329,4 +420,16 @@ function formatDate(d: string) {
 }
 .empty-photos h3 { font-size: 20px; color: #64748b; margin: 16px 0 8px; }
 .empty-photos p { font-size: 14px; color: #94a3b8; }
+
+/* 权限设置面板 */
+.permission-panel { padding: 10px 0; }
+.permission-desc { font-size: 14px; color: #64748b; margin-bottom: 20px; text-align: center; }
+.permission-options {
+  display: flex; flex-direction: column; gap: 12px; width: 100%;
+}
+.permission-options .el-radio { margin-right: 0; height: auto; padding: 12px 16px; border: 1px solid #e2e8f0; border-radius: 10px; transition: all 0.2s; }
+.permission-options .el-radio.is-checked { border-color: #409eff; background: #f0f7ff; }
+.perm-option { margin-left: 4px; }
+.perm-option-title { font-size: 14px; font-weight: 600; color: #1e293b; }
+.perm-option-desc { font-size: 12px; color: #94a3b8; margin-top: 4px; }
 </style>

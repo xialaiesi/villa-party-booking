@@ -20,6 +20,9 @@ export class DashboardController {
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
     const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+    // 上月时间范围
+    const lastMonthStart = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+    const lastMonthEnd = monthStart;
 
     const orderWhere = this.scope(ctx);
     const villaWhere = this.scope(ctx);
@@ -27,6 +30,8 @@ export class DashboardController {
     const [
       todayOrders, todayRevenue, pendingOrders, totalVillas, activeVillas,
       totalUsers, monthOrders, monthRevenue, totalOrders, completedOrders,
+      lastMonthOrders, lastMonthRevenue,
+      pendingDepositOrders, pendingVideoReviews,
     ] = await Promise.all([
       this.prisma.order.count({ where: { ...orderWhere, createdAt: { gte: today, lt: tomorrow } } }),
       this.prisma.order.aggregate({
@@ -44,12 +49,31 @@ export class DashboardController {
       }),
       this.prisma.order.count({ where: orderWhere }),
       this.prisma.order.count({ where: { ...orderWhere, status: 5 } }),
+      // 上月数据（环比）
+      this.prisma.order.count({ where: { ...orderWhere, createdAt: { gte: lastMonthStart, lt: lastMonthEnd } } }),
+      this.prisma.order.aggregate({
+        _sum: { totalAmount: true },
+        where: { ...orderWhere, paidAt: { gte: lastMonthStart, lt: lastMonthEnd }, status: { gte: 1 } },
+      }),
+      // 待退押金订单
+      this.prisma.order.count({ where: { ...orderWhere, status: 4 } }),
+      // 待审核视频
+      this.prisma.review.count({ where: { videos: { not: null }, videoStatus: 0 } }),
     ]);
 
     return {
       today: { orders: todayOrders, revenue: Number(todayRevenue._sum.totalAmount || 0) },
       month: { orders: monthOrders, revenue: Number(monthRevenue._sum.totalAmount || 0) },
+      lastMonth: {
+        orders: lastMonthOrders,
+        revenue: Number(lastMonthRevenue._sum.totalAmount || 0),
+      },
       pendingOrders,
+      pendingItems: {
+        pendingOrders,
+        pendingDepositOrders,
+        pendingVideoReviews,
+      },
       villas: { total: totalVillas, active: activeVillas },
       users: totalUsers,
       totalOrders,

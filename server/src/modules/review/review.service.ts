@@ -136,6 +136,33 @@ export class ReviewService {
     return { success: true };
   }
 
+  /** 获取所有评价列表（管理后台） */
+  async getAdminReviews(page = 1, pageSize = 20, filters?: { videoStatus?: number }) {
+    const where: any = {};
+    if (filters?.videoStatus !== undefined && filters.videoStatus !== -1) {
+      where.videoStatus = filters.videoStatus;
+    }
+    const [list, total] = await Promise.all([
+      this.prisma.review.findMany({
+        where,
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          user: { select: { nickname: true, avatar: true } },
+          villa: { select: { name: true } },
+          order: { select: { orderNo: true } },
+        },
+      }),
+      this.prisma.review.count({ where }),
+    ]);
+
+    return {
+      list: list.map(r => this.format(r)),
+      total,
+    };
+  }
+
   /** 获取待审核的视频评价列表 */
   async getPendingVideoReviews(page = 1, pageSize = 20) {
     const where = { videos: { not: null }, videoStatus: 0 };

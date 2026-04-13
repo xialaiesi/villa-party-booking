@@ -60,9 +60,27 @@ request.interceptors.response.use(
     if (error.response?.status === 401) {
       localStorage.removeItem('user_token');
       localStorage.removeItem('user_info');
-      window.location.href = '/login';
+      const currentPath = window.location.pathname + window.location.search;
+      window.location.href = '/login?redirect=' + encodeURIComponent(currentPath);
+      return Promise.reject(error);
     }
-    ElMessage.error(error.response?.data?.message || '网络异常');
+
+    let errMsg = '网络异常';
+    if (!error.response) {
+      // 网络连接失败（无响应）
+      errMsg = '网络连接失败，请检查网络';
+    } else {
+      const status = error.response.status;
+      if (status === 404) {
+        errMsg = '页面不存在';
+      } else if (status === 500) {
+        errMsg = '服务器暂时故障，请稍后重试';
+      } else if (error.response.data?.message) {
+        errMsg = error.response.data.message;
+      }
+    }
+
+    ElMessage.error(errMsg);
     return Promise.reject(error);
   },
 );

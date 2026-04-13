@@ -12,17 +12,32 @@ export class VillaService {
     checkIn?: string;
     checkOut?: string;
     guests?: number;
+    bedrooms?: number;
     facilities?: number[];
     minPrice?: number;
     maxPrice?: number;
+    keyword?: string;
     tag?: string;
     sort?: string;
   }) {
     const { page = 1, pageSize = 10 } = query;
     const where: Prisma.VillaWhereInput = { status: 1 };
 
+    // 使用 AND 数组来安全组合多个 OR 条件
+    const andConditions: Prisma.VillaWhereInput[] = [];
+    if (query.keyword) {
+      andConditions.push({
+        OR: [
+          { name: { contains: query.keyword } },
+          { address: { contains: query.keyword } },
+        ],
+      });
+    }
     if (query.guests) {
       where.maxGuests = { gte: query.guests };
+    }
+    if (query.bedrooms) {
+      where.bedrooms = { gte: query.bedrooms };
     }
     if (query.minPrice || query.maxPrice) {
       where.basePrice = {};
@@ -35,8 +50,13 @@ export class VillaService {
       if (keywords.length === 1) {
         where.tags = { contains: keywords[0] };
       } else {
-        where.OR = keywords.map((kw) => ({ tags: { contains: kw } }));
+        andConditions.push({
+          OR: keywords.map((kw) => ({ tags: { contains: kw } })),
+        });
       }
+    }
+    if (andConditions.length) {
+      where.AND = andConditions;
     }
     if (query.facilities?.length) {
       where.facilities = {
@@ -162,12 +182,15 @@ export class VillaService {
     return days;
   }
 
-  async getReviews(villaId: number, page = 1, pageSize = 10) {
+  async getReviews(villaId: number, page = 1, pageSize = 10, sort?: string) {
     const where: any = { villaId };
+    let orderBy: any = { createdAt: 'desc' };
+    if (sort === 'rating_desc') orderBy = { rating: 'desc' };
+    if (sort === 'rating_asc') orderBy = { rating: 'asc' };
     const [list, total, stats] = await Promise.all([
       this.prisma.review.findMany({
         where,
-        orderBy: { createdAt: 'desc' },
+        orderBy,
         skip: (page - 1) * pageSize,
         take: pageSize,
         include: {

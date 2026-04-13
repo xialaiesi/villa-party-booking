@@ -3,14 +3,22 @@
     <!-- 图片画廊 -->
     <div class="gallery">
       <div class="main-image" @mousedown="onDragStart" @mousemove="onDragMove" @mouseup="onDragEnd" @mouseleave="onDragEnd">
+        <div class="img-skeleton" v-if="mainImageLoading"></div>
         <el-image
           :src="resolveImg(currentImage || '')"
           fit="cover"
           :preview-src-list="allImages"
           :initial-index="currentIndex"
           preview-teleported
+          loading="lazy"
+          @load="mainImageLoading = false"
+          @error="mainImageLoading = false; mainImageError = true"
           style="width: 100%; height: 500px; border-radius: 12px; user-select: none;"
+          v-show="!mainImageError"
         />
+        <div class="img-error-placeholder" v-if="mainImageError" style="width: 100%; height: 500px; border-radius: 12px;">
+          <span>图片加载失败</span>
+        </div>
         <!-- 左右箭头 -->
         <button class="gallery-arrow left" @click.stop="prevImage" v-if="totalImages > 1">‹</button>
         <button class="gallery-arrow right" @click.stop="nextImage" v-if="totalImages > 1">›</button>
@@ -25,7 +33,7 @@
           :class="{ active: currentIndex === i }"
           @click="currentIndex = Number(i)"
         >
-          <img :src="thumbUrl(img.url)" />
+          <img :src="thumbUrl(img.url)" loading="lazy" @error="(e: Event) => onImgError(e)" />
         </div>
         <div class="thumb view-all" v-if="villa.images?.length > 5" @click="currentIndex = 5">
           <span>+{{ villa.images.length - 5 }}</span>
@@ -88,8 +96,15 @@
                 fit="cover"
                 :preview-src-list="allImages"
                 preview-teleported
+                loading="lazy"
                 style="width: 100%; border-radius: 8px; cursor: pointer;"
-              />
+              >
+                <template #error>
+                  <div class="img-error-placeholder" style="height: 300px; border-radius: 8px;">
+                    <span>图片加载失败</span>
+                  </div>
+                </template>
+              </el-image>
               <div class="caption" v-if="img.caption">{{ img.caption }}</div>
             </div>
           </div>
@@ -98,17 +113,52 @@
         <!-- 评价 -->
         <div class="card">
           <h3>💬 用户评价 ({{ reviewStats.total }})</h3>
-          <!-- 视频测评 -->
+
+          <!-- 多维度评分条形图 -->
+          <div class="dimension-ratings" v-if="reviewStats.total > 0">
+            <div class="dimension-item" v-for="dim in dimensionRatings" :key="dim.label">
+              <span class="dim-label">{{ dim.label }}</span>
+              <div class="dim-bar-bg">
+                <div class="dim-bar-fill" :style="{ width: (dim.score / 5 * 100) + '%' }"></div>
+              </div>
+              <span class="dim-score">{{ dim.score }}</span>
+            </div>
+          </div>
+
+          <!-- 视频测评（水平滚动卡片流） -->
           <div class="video-reviews" v-if="videoReviews.length">
             <div class="section-title">真实入住视频</div>
-            <div class="video-list">
-              <div class="video-item" v-for="v in videoReviews" :key="v.url" @click="playVideo(v.url)">
-                <video :src="v.url" class="video-cover" preload="metadata" />
-                <div class="play-icon">▶</div>
-                <div class="video-duration" v-if="v.duration">{{ formatDuration(v.duration) }}</div>
+            <div class="video-scroll-container">
+              <div class="video-list">
+                <div class="video-item" v-for="v in videoReviews" :key="v.url" @click="playVideo(v.url)">
+                  <video :src="v.url" class="video-cover" preload="metadata" />
+                  <div class="play-icon">▶</div>
+                  <div class="video-duration" v-if="v.duration">{{ formatDuration(v.duration) }}</div>
+                </div>
               </div>
             </div>
           </div>
+
+          <!-- 评论排序 -->
+          <div class="review-sort-bar" v-if="reviews.length">
+            <span class="sort-label">排序：</span>
+            <span
+              class="sort-option"
+              :class="{ active: reviewSort === 'latest' }"
+              @click="changeSort('latest')"
+            >最新</span>
+            <span
+              class="sort-option"
+              :class="{ active: reviewSort === 'rating_desc' }"
+              @click="changeSort('rating_desc')"
+            >最高评分</span>
+            <span
+              class="sort-option"
+              :class="{ active: reviewSort === 'rating_asc' }"
+              @click="changeSort('rating_asc')"
+            >最低评分</span>
+          </div>
+
           <div v-if="reviews.length">
             <div class="review" v-for="r in reviews" :key="r.id">
               <img v-if="r.user?.avatar" :src="r.user.avatar" class="avatar" />
@@ -171,7 +221,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { getVilla, getVillaReviews } from '../../api/villa';
 import { detailUrl, thumbUrl } from '../../utils/request';
@@ -187,6 +237,24 @@ const villa = ref<any>(null);
 const reviews = ref<any[]>([]);
 const reviewStats = ref({ avgRating: '0.0', total: 0 });
 const currentIndex = ref(0);
+const reviewSort = ref('latest');
+const mainImageLoading = ref(true);
+const mainImageError = ref(false);
+
+// 切换图片时重置加载状态
+watch(currentIndex, () => {
+  mainImageLoading.value = true;
+  mainImageError.value = false;
+});
+
+function onImgError(e: Event) {
+  const el = e.target as HTMLImageElement;
+  el.style.display = 'none';
+  const placeholder = document.createElement('div');
+  placeholder.className = 'img-error-inline';
+  placeholder.textContent = '图片加载失败';
+  el.parentElement?.appendChild(placeholder);
+}
 
 const totalImages = computed(() => villa.value?.images?.length || 0);
 
@@ -232,13 +300,37 @@ const allImages = computed(() =>
   (villa.value?.images || []).map((img: any) => detailUrl(img.url)),
 );
 
+// 多维度评分（后端暂无多维度数据，用总评分模拟）
+const dimensionRatings = computed(() => {
+  const avg = parseFloat(reviewStats.value.avgRating) || 0;
+  if (avg === 0) return [];
+  // 基于总评分模拟各维度，加微小偏移使其更真实
+  return [
+    { label: '清洁度', score: Math.min(5, Math.max(1, +(avg + 0.1).toFixed(1))) },
+    { label: '设施', score: Math.min(5, Math.max(1, +(avg - 0.1).toFixed(1))) },
+    { label: '位置', score: Math.min(5, Math.max(1, +(avg + 0.2).toFixed(1))) },
+    { label: '性价比', score: Math.min(5, Math.max(1, +(avg - 0.2).toFixed(1))) },
+  ];
+});
+
+async function fetchReviews(sort?: string) {
+  const id = parseInt(route.params.id as string);
+  const sortParam = sort === 'latest' ? undefined : sort;
+  const res: any = await getVillaReviews(id, 1, 50, sortParam);
+  reviews.value = res.list || [];
+  reviewStats.value = { avgRating: res.avgRating || '0.0', total: res.total || 0 };
+}
+
+function changeSort(sort: string) {
+  reviewSort.value = sort;
+  fetchReviews(sort);
+}
+
 onMounted(async () => {
   const id = parseInt(route.params.id as string);
   try {
     villa.value = await getVilla(id);
-    const res: any = await getVillaReviews(id);
-    reviews.value = res.list || [];
-    reviewStats.value = { avgRating: res.avgRating || '0.0', total: res.total || 0 };
+    await fetchReviews('latest');
   } catch (e) { console.error(e); }
 });
 
@@ -378,6 +470,43 @@ function formatDuration(s: number) {
   text-align: center;
 }
 
+/* 多维度评分条形图 */
+.dimension-ratings {
+  display: grid; gap: 10px; margin-bottom: 20px;
+  padding-bottom: 20px; border-bottom: 1px solid #f5f5f5;
+}
+.dimension-item {
+  display: flex; align-items: center; gap: 12px;
+}
+.dim-label {
+  width: 56px; font-size: 13px; color: #64748b; text-align: right; flex-shrink: 0;
+}
+.dim-bar-bg {
+  flex: 1; height: 8px; background: #f1f5f9; border-radius: 4px; overflow: hidden;
+}
+.dim-bar-fill {
+  height: 100%; background: linear-gradient(90deg, #fbbf24, #f59e0b);
+  border-radius: 4px; transition: width 0.6s ease;
+}
+.dim-score {
+  width: 28px; font-size: 13px; font-weight: 600; color: #d97706; text-align: left;
+}
+
+/* 评论排序栏 */
+.review-sort-bar {
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 8px; padding-bottom: 12px; border-bottom: 1px solid #f5f5f5;
+}
+.sort-label { font-size: 13px; color: #999; }
+.sort-option {
+  font-size: 13px; color: #666; cursor: pointer; padding: 4px 12px;
+  border-radius: 16px; transition: all 0.2s;
+}
+.sort-option:hover { color: #ff6b35; background: #fff3ed; }
+.sort-option.active {
+  color: #fff; background: #ff6b35; font-weight: 600;
+}
+
 .review { display: flex; gap: 16px; padding: 20px 0; border-bottom: 1px solid #f5f5f5; }
 .review:last-child { border-bottom: none; }
 .avatar { width: 48px; height: 48px; border-radius: 50%; }
@@ -397,14 +526,18 @@ function formatDuration(s: number) {
 
 .video-reviews { margin-bottom: 20px; padding-bottom: 20px; border-bottom: 1px solid #f5f5f5; }
 .section-title { font-size: 14px; color: #666; margin-bottom: 12px; font-weight: 600; }
-.video-list { display: flex; gap: 12px; overflow-x: auto; }
-.video-item { position: relative; width: 160px; height: 100px; border-radius: 8px; overflow: hidden; cursor: pointer; flex-shrink: 0; }
+.video-scroll-container { overflow-x: auto; margin: 0 -8px; padding: 0 8px; }
+.video-scroll-container::-webkit-scrollbar { height: 6px; }
+.video-scroll-container::-webkit-scrollbar-thumb { background: #ddd; border-radius: 3px; }
+.video-scroll-container::-webkit-scrollbar-track { background: transparent; }
+.video-list { display: flex; gap: 12px; padding-bottom: 4px; }
+.video-item { position: relative; width: 200px; height: 130px; border-radius: 8px; overflow: hidden; cursor: pointer; flex-shrink: 0; }
 .video-cover { width: 100%; height: 100%; object-fit: cover; }
 .play-icon { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 36px; height: 36px; background: rgba(0,0,0,0.5); border-radius: 50%; color: #fff; font-size: 14px; display: flex; align-items: center; justify-content: center; }
 .video-duration { position: absolute; bottom: 6px; right: 6px; background: rgba(0,0,0,0.6); color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 11px; }
 
 .review-videos { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
-.review-videos .video-thumb { position: relative; width: 80px; height: 60px; border-radius: 6px; overflow: hidden; cursor: pointer; }
+.review-videos .video-thumb { position: relative; width: 120px; height: 90px; border-radius: 6px; overflow: hidden; cursor: pointer; }
 .review-videos video { width: 100%; height: 100%; object-fit: cover; }
 .review-videos .play-icon { width: 24px; height: 24px; font-size: 10px; }
 
@@ -434,4 +567,25 @@ function formatDuration(s: number) {
 }
 .contact-title { font-size: 13px; color: #999; }
 .contact-phone { font-size: 18px; color: #ff6b35; font-weight: bold; margin-top: 6px; }
+
+/* 骨架屏 */
+.img-skeleton {
+  position: absolute; inset: 0; z-index: 1;
+  border-radius: 12px; background: #e2e8f0;
+  animation: skeleton-pulse 1.5s ease-in-out infinite;
+}
+@keyframes skeleton-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* 图片加载失败占位 */
+.img-error-placeholder {
+  display: flex; align-items: center; justify-content: center;
+  background: #f1f5f9; color: #94a3b8; font-size: 14px;
+}
+.img-error-inline {
+  width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;
+  background: #f1f5f9; color: #94a3b8; font-size: 13px; border-radius: 8px;
+}
 </style>

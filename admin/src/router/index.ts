@@ -23,6 +23,7 @@ const routes = [
       { path: 'local-service', component: () => import('../views/local-service/index.vue'), meta: { title: '周边服务' } },
       { path: 'seasonal-event', component: () => import('../views/seasonal-event/index.vue'), meta: { title: '限定活动' } },
       { path: 'album', component: () => import('../views/album/index.vue'), meta: { title: '共享相册' } },
+      { path: 'review', component: () => import('../views/review/index.vue'), meta: { title: '评价管理' } },
       { path: 'video-review', component: () => import('../views/review/video-review.vue'), meta: { title: '视频审核' } },
       { path: 'merchant', component: () => import('../views/merchant/index.vue'), meta: { title: '商家管理' } },
       { path: 'finance', component: () => import('../views/finance/index.vue'), meta: { title: '财务中心' } },

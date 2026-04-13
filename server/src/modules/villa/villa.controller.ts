@@ -14,9 +14,11 @@ export class VillaController {
     @Query('check_in') checkIn?: string,
     @Query('check_out') checkOut?: string,
     @Query('guests') guests?: string,
+    @Query('bedrooms') bedrooms?: string,
     @Query('facilities') facilities?: string,
     @Query('min_price') minPrice?: string,
     @Query('max_price') maxPrice?: string,
+    @Query('keyword') keyword?: string,
     @Query('tag') tag?: string,
     @Query('sort') sort?: string,
   ) {
@@ -26,11 +28,13 @@ export class VillaController {
       checkIn,
       checkOut,
       guests: guests ? parseInt(guests) : undefined,
+      bedrooms: bedrooms ? parseInt(bedrooms) : undefined,
       facilities: facilities
         ? facilities.split(',').map((f) => parseInt(f))
         : undefined,
       minPrice: minPrice ? parseFloat(minPrice) : undefined,
       maxPrice: maxPrice ? parseFloat(maxPrice) : undefined,
+      keyword,
       tag,
       sort,
     });
@@ -62,11 +66,13 @@ export class VillaController {
     @Param('id', ParseIntPipe) id: number,
     @Query('page') page?: string,
     @Query('pageSize') pageSize?: string,
+    @Query('sort') sort?: string,
   ) {
     return this.villaService.getReviews(
       id,
       page ? parseInt(page) : 1,
       pageSize ? parseInt(pageSize) : 10,
+      sort,
     );
   }
 }

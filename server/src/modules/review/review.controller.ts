@@ -74,6 +74,20 @@ export class ReviewController {
     return this.service.reviewVideo(id, body.approved, body.reason);
   }
 
+  /** 获取所有评价列表（管理后台） */
+  @Get('admin/reviews')
+  async getAdminReviews(
+    @Query('page') page = '1',
+    @Query('pageSize') pageSize = '20',
+    @Query('videoStatus') videoStatus?: string,
+  ) {
+    const filters: any = {};
+    if (videoStatus !== undefined && videoStatus !== '') {
+      filters.videoStatus = Number(videoStatus);
+    }
+    return this.service.getAdminReviews(Number(page), Number(pageSize), filters);
+  }
+
   /** 获取待审核视频列表 */
   @Get('admin/reviews/pending-videos')
   async getPendingVideos(

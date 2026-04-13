@@ -53,6 +53,7 @@
             <h4>服务支持</h4>
             <p>客服电话：400-xxx-xxxx</p>
             <p>工作时间：9:00 - 21:00</p>
+            <p><router-link to="/help" class="footer-link">帮助中心</router-link></p>
           </div>
           <div class="footer-col">
             <h4>关注我们</h4>
@@ -166,6 +167,8 @@ function handleCommand(cmd: string) {
 }
 .footer-col h4 { color: #e2e8f0; font-size: 16px; margin-bottom: 16px; font-weight: 600; }
 .footer-col p { font-size: 14px; line-height: 2; margin-bottom: 2px; }
+.footer-link { color: #93c5fd; transition: color 0.2s; }
+.footer-link:hover { color: #fff; }
 .footer-bottom {
   text-align: center; padding-top: 24px;
   font-size: 13px; color: #64748b;

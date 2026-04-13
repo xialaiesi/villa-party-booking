@@ -12,8 +12,8 @@ export function getVillaCalendar(id: number, year: number, month: number) {
   return request.get(`/api/villas/${id}/calendar`, { params: { year, month } });
 }
 
-export function getVillaReviews(id: number, page = 1, pageSize = 10) {
-  return request.get(`/api/villas/${id}/reviews`, { params: { page, pageSize } });
+export function getVillaReviews(id: number, page = 1, pageSize = 10, sort?: string) {
+  return request.get(`/api/villas/${id}/reviews`, { params: { page, pageSize, sort } });
 }
 
 export function listFacilities() {

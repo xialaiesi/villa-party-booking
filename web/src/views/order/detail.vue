@@ -8,6 +8,30 @@
       <div class="status-desc">{{ statusDesc(order.status) }}</div>
     </div>
 
+    <!-- 订单进度条 -->
+    <div class="card progress-card" v-if="order.status <= 5">
+      <h3>订单进度</h3>
+      <div class="progress-bar">
+        <div
+          v-for="(step, idx) in progressSteps"
+          :key="idx"
+          class="progress-step"
+          :class="{ active: idx <= currentStepIndex, current: idx === currentStepIndex }"
+        >
+          <div class="step-dot">
+            <span v-if="idx < currentStepIndex" class="step-check">&#10003;</span>
+            <span v-else>{{ idx + 1 }}</span>
+          </div>
+          <div class="step-label">{{ step.label }}</div>
+          <div class="step-line" v-if="idx < progressSteps.length - 1" :class="{ filled: idx < currentStepIndex }" />
+        </div>
+      </div>
+      <div class="next-action-tip" v-if="nextActionText(order.status)">
+        <span class="tip-icon">&#128161;</span>
+        <span>{{ nextActionText(order.status) }}</span>
+      </div>
+    </div>
+
     <div class="card">
       <h3>别墅信息</h3>
       <div class="villa-row">
@@ -38,7 +62,11 @@
 
     <div class="card">
       <h3>订单信息</h3>
-      <div class="info-row"><span class="label">订单号：</span>{{ order.orderNo }}</div>
+      <div class="info-row"><span class="label">订单号：</span>{{ order.orderNo }}
+        <span class="copy-btn" @click.stop="copyOrderNo(order.orderNo)" title="复制订单号">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+        </span>
+      </div>
       <div class="info-row"><span class="label">下单时间：</span>{{ formatDate(order.createdAt) }}</div>
     </div>
 
@@ -153,12 +181,75 @@
       </div>
     </el-dialog>
 
+    <!-- 客服联系方式 -->
+    <div class="card service-card">
+      <div class="service-row">
+        <div class="service-info">
+          <span class="service-icon">&#128222;</span>
+          <div>
+            <div class="service-title">需要帮助？联系客服</div>
+            <div class="service-desc">工作时间：每天 9:00 - 22:00</div>
+          </div>
+        </div>
+        <div class="service-actions">
+          <el-button round size="small" @click="callService">电话咨询</el-button>
+          <el-button round size="small" type="primary" @click="copyWechat">微信客服</el-button>
+        </div>
+      </div>
+    </div>
+
     <!-- 支付成功提示 -->
-    <el-dialog v-model="paySuccessVisible" title="" width="360px" center>
+    <el-dialog v-model="paySuccessVisible" title="" width="420px" center :close-on-click-modal="false">
       <div class="pay-success">
         <div class="success-icon">✅</div>
         <h3>{{ payType === 'deposit' ? '定金' : '尾款' }}支付请求已提交</h3>
-        <p>请等待商家确认到账，确认后订单状态会自动更新</p>
+        <div class="pay-success-progress">
+          <div class="progress-item active">
+            <div class="progress-dot">✓</div>
+            <span>提交支付</span>
+          </div>
+          <div class="progress-line active" />
+          <div class="progress-item pending">
+            <div class="progress-dot">2</div>
+            <span>商家确认</span>
+          </div>
+          <div class="progress-line" />
+          <div class="progress-item pending">
+            <div class="progress-dot">3</div>
+            <span>完成</span>
+          </div>
+        </div>
+        <p class="pay-success-tip">已提交支付，商家将在 2-4 小时内确认到账</p>
+        <div class="pay-success-contact">
+          <span>如有疑问请联系客服：</span>
+          <span class="contact-phone" @click="callService">400-888-8888</span>
+          <span> / 微信：</span>
+          <span class="contact-wechat" @click="copyWechat">villa_service</span>
+        </div>
+        <div class="pay-success-actions">
+          <el-button round @click="paySuccessVisible = false">返回订单</el-button>
+          <el-button type="primary" round @click="paySuccessVisible = false; $router.push('/search')">继续浏览</el-button>
+        </div>
+      </div>
+    </el-dialog>
+    <!-- 支付失败提示 -->
+    <el-dialog v-model="payFailVisible" title="" width="400px" center>
+      <div class="pay-fail">
+        <div class="fail-icon">❌</div>
+        <h3>支付提交失败</h3>
+        <div class="fail-reason">{{ payFailReason }}</div>
+        <div class="fail-suggestions">
+          <div class="fail-title">可能的原因：</div>
+          <ul>
+            <li>网络连接不稳定，请检查网络后重试</li>
+            <li>订单状态已发生变化，请刷新页面查看</li>
+            <li>系统繁忙，请稍后再试</li>
+          </ul>
+        </div>
+        <div class="fail-actions">
+          <el-button round @click="payFailVisible = false; load()">刷新订单</el-button>
+          <el-button type="primary" round @click="retryPay">重新支付</el-button>
+        </div>
       </div>
     </el-dialog>
   </div>
@@ -186,6 +277,49 @@ const finalAmount = computed(() => {
   if (!order.value) return 0;
   return (Number(order.value.totalAmount) - Number(order.value.depositAmount)).toFixed(2);
 });
+
+const progressSteps = [
+  { label: '提交订单', status: 0 },
+  { label: '支付定金', status: 1 },
+  { label: '商家确认', status: 2 },
+  { label: '支付尾款', status: 3 },
+  { label: '入住', status: 4 },
+  { label: '完成', status: 5 },
+];
+
+const currentStepIndex = computed(() => {
+  const s = order.value?.status ?? 0;
+  const idx = progressSteps.findIndex(step => step.status === s);
+  return idx >= 0 ? idx : 0;
+});
+
+function nextActionText(s: number): string {
+  return {
+    0: '请尽快支付定金以锁定日期，超时订单将自动关闭',
+    1: '商家正在确认到账，预计 2-4 小时内完成确认',
+    2: '商家已确认订单，请在入住前完成尾款支付',
+    3: '费用已结清，请按照预定日期准时入住',
+    4: '您正在入住中，祝您玩得愉快！',
+    5: '入住已完成，欢迎您留下评价',
+  }[s] || '';
+}
+
+function callService() {
+  window.location.href = 'tel:400-888-8888';
+}
+
+function copyWechat() {
+  const wechat = 'villa_service';
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(wechat).catch(() => {});
+  } else {
+    const ta = document.createElement('textarea');
+    ta.value = wechat; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select(); document.execCommand('copy');
+    document.body.removeChild(ta);
+  }
+  ElMessage.success('微信号 villa_service 已复制，请在微信中添加');
+}
 
 onMounted(() => load());
 
@@ -237,6 +371,9 @@ function handlePayFinal() {
   payDialogVisible.value = true;
 }
 
+const payFailVisible = ref(false);
+const payFailReason = ref('');
+
 async function confirmPay(_method: string) {
   payDialogVisible.value = false;
   try {
@@ -248,8 +385,14 @@ async function confirmPay(_method: string) {
     paySuccessVisible.value = true;
     load();
   } catch (e: any) {
-    ElMessage.error(e.message || '操作失败');
+    payFailReason.value = e.message || '支付提交失败，请稍后重试';
+    payFailVisible.value = true;
   }
+}
+
+function retryPay() {
+  payFailVisible.value = false;
+  payDialogVisible.value = true;
 }
 
 async function handleCancel() {
@@ -270,6 +413,26 @@ async function submitReview() {
   } catch (e: any) {
     ElMessage.error(e.message || '评价失败');
   }
+}
+
+function copyOrderNo(orderNo: string) {
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(orderNo).then(() => {
+      ElMessage.success('订单号已复制');
+    }).catch(() => {
+      fallbackCopy(orderNo);
+    });
+  } else {
+    fallbackCopy(orderNo);
+  }
+}
+
+function fallbackCopy(text: string) {
+  const ta = document.createElement('textarea');
+  ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+  document.body.appendChild(ta); ta.select(); document.execCommand('copy');
+  document.body.removeChild(ta);
+  ElMessage.success('订单号已复制');
 }
 
 function formatDate(d: string) { return new Date(d).toLocaleString(); }
@@ -320,8 +483,14 @@ function statusDesc(s: number) {
 .fee-item { display: flex; justify-content: space-between; padding: 10px 0; font-size: 14px; color: #64748b; }
 .fee-divider { border-top: 1px dashed #e2e8f0; margin: 8px 0; }
 .discount { color: #27ae60; }
-.info-row { padding: 6px 0; font-size: 14px; color: #64748b; }
+.info-row { padding: 6px 0; font-size: 14px; color: #64748b; display: flex; align-items: center; }
 .label { color: #94a3b8; }
+.copy-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  margin-left: 8px; padding: 4px; border-radius: 4px;
+  color: #94a3b8; cursor: pointer; transition: all 0.2s;
+}
+.copy-btn:hover { color: #409eff; background: #f0f7ff; }
 
 .action-bar {
   display: flex; gap: 12px; padding: 20px;
@@ -344,8 +513,63 @@ function statusDesc(s: number) {
 
 .pay-success { text-align: center; padding: 20px 0; }
 .success-icon { font-size: 48px; }
-.pay-success h3 { font-size: 18px; color: #1e293b; margin: 12px 0 8px; }
-.pay-success p { font-size: 14px; color: #94a3b8; }
+.pay-success h3 { font-size: 18px; color: #1e293b; margin: 12px 0 16px; }
+.pay-success-progress {
+  display: flex; align-items: center; justify-content: center;
+  gap: 0; margin-bottom: 16px;
+}
+.pay-success-progress .progress-item {
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+}
+.pay-success-progress .progress-dot {
+  width: 28px; height: 28px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 700;
+  background: #e2e8f0; color: #94a3b8;
+}
+.pay-success-progress .progress-item.active .progress-dot {
+  background: #67c23a; color: #fff;
+}
+.pay-success-progress .progress-item.pending .progress-dot {
+  background: #e2e8f0; color: #94a3b8;
+}
+.pay-success-progress .progress-item span {
+  font-size: 12px; color: #64748b; white-space: nowrap;
+}
+.pay-success-progress .progress-line {
+  width: 40px; height: 3px; background: #e2e8f0; margin: 0 4px 18px;
+}
+.pay-success-progress .progress-line.active { background: #67c23a; }
+.pay-success-tip {
+  font-size: 14px; color: #e6a23c; font-weight: 500;
+  background: #fffbeb; padding: 10px 16px; border-radius: 8px;
+  margin-bottom: 12px;
+}
+.pay-success-contact {
+  font-size: 13px; color: #64748b; margin-bottom: 16px;
+}
+.pay-success-contact .contact-phone,
+.pay-success-contact .contact-wechat {
+  color: #409eff; cursor: pointer; font-weight: 600;
+}
+.pay-success-contact .contact-phone:hover,
+.pay-success-contact .contact-wechat:hover { text-decoration: underline; }
+.pay-success-actions { display: flex; gap: 12px; justify-content: center; }
+
+/* 支付失败 */
+.pay-fail { text-align: center; padding: 20px 0; }
+.fail-icon { font-size: 48px; }
+.pay-fail h3 { font-size: 18px; color: #f56c6c; margin: 12px 0 12px; }
+.fail-reason {
+  font-size: 14px; color: #e6a23c; background: #fef0e0;
+  padding: 10px 16px; border-radius: 8px; margin-bottom: 16px;
+}
+.fail-suggestions { text-align: left; margin-bottom: 20px; }
+.fail-title { font-size: 14px; color: #64748b; font-weight: 600; margin-bottom: 8px; }
+.fail-suggestions ul {
+  margin: 0; padding-left: 20px; font-size: 13px; color: #94a3b8; line-height: 2;
+}
+.fail-actions { display: flex; gap: 12px; justify-content: center; }
 
 /* 评价 */
 .review-form { }
@@ -383,8 +607,68 @@ function statusDesc(s: number) {
 .code-text:hover { text-decoration: underline; }
 .code-tip { font-size: 12px; color: #94a3b8; }
 
+/* 进度条 */
+.progress-card { }
+.progress-bar {
+  display: flex; align-items: flex-start; position: relative;
+}
+.progress-step {
+  flex: 1; display: flex; flex-direction: column; align-items: center;
+  position: relative;
+}
+.step-dot {
+  width: 32px; height: 32px; border-radius: 50%;
+  background: #e2e8f0; color: #94a3b8;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 700; position: relative; z-index: 1;
+  transition: all 0.3s;
+}
+.progress-step.active .step-dot {
+  background: #409eff; color: #fff;
+}
+.progress-step.current .step-dot {
+  background: #ff6b35; color: #fff;
+  box-shadow: 0 0 0 4px rgba(255, 107, 53, 0.2);
+}
+.step-check { font-size: 14px; }
+.step-label {
+  font-size: 12px; color: #94a3b8; margin-top: 8px; text-align: center;
+  white-space: nowrap;
+}
+.progress-step.active .step-label { color: #1e293b; font-weight: 500; }
+.progress-step.current .step-label { color: #ff6b35; font-weight: 600; }
+.step-line {
+  position: absolute; top: 15px; left: calc(50% + 16px);
+  width: calc(100% - 32px); height: 3px;
+  background: #e2e8f0; z-index: 0;
+}
+.step-line.filled { background: #409eff; }
+
+.next-action-tip {
+  display: flex; align-items: center; gap: 8px;
+  margin-top: 20px; padding: 14px 18px; border-radius: 10px;
+  background: #fffbeb; border: 1px solid #fde68a;
+  font-size: 14px; color: #92400e; line-height: 1.5;
+}
+.tip-icon { font-size: 18px; flex-shrink: 0; }
+
+/* 客服 */
+.service-card { background: #f8fafc !important; border: 1px solid #e2e8f0; }
+.service-row {
+  display: flex; justify-content: space-between; align-items: center;
+  flex-wrap: wrap; gap: 12px;
+}
+.service-info { display: flex; align-items: center; gap: 12px; }
+.service-icon { font-size: 28px; }
+.service-title { font-size: 15px; font-weight: 600; color: #1e293b; }
+.service-desc { font-size: 12px; color: #94a3b8; margin-top: 2px; }
+.service-actions { display: flex; gap: 8px; }
+
 @media (max-width: 768px) {
   .action-bar { flex-direction: column; }
   .pay-methods { flex-direction: column; gap: 10px; }
+  .progress-bar { gap: 0; }
+  .step-label { font-size: 11px; }
+  .service-row { flex-direction: column; align-items: flex-start; }
 }
 </style>
