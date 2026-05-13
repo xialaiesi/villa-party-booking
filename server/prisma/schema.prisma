@@ -757,3 +757,42 @@ model SiteConfig {
   @@unique([merchantId, configKey])
   @@map("site_config")
 }
+
+// ==================== 访客追踪 ====================
+
+model PageView {
+  id         BigInt   @id @default(autoincrement())
+  url        String   @db.VarChar(500)
+  referrer   String?  @db.VarChar(500)
+  utmSource  String?  @map("utm_source") @db.VarChar(50)
+  utmCampaign String? @map("utm_campaign") @db.VarChar(100)
+  utmMedium  String?  @map("utm_medium") @db.VarChar(50)
+  userId     BigInt?  @map("user_id")
+  sessionId  String   @map("session_id") @db.VarChar(64)
+  userAgent  String?  @map("user_agent") @db.VarChar(500)
+  ip         String?  @db.VarChar(50)
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@index([utmSource])
+  @@index([createdAt])
+  @@index([userId])
+  @@map("page_view")
+}
+
+model EventLog {
+  id         BigInt   @id @default(autoincrement())
+  eventType  String   @map("event_type") @db.VarChar(50) // page_view/villa_view/booking_open/wechat_click/share_click
+  targetId   BigInt?  @map("target_id") // 别墅ID/订单ID等
+  targetType String?  @map("target_type") @db.VarChar(30) // villa/order/album
+  utmSource  String?  @map("utm_source") @db.VarChar(50)
+  utmCampaign String? @map("utm_campaign") @db.VarChar(100)
+  userId     BigInt?  @map("user_id")
+  sessionId  String   @map("session_id") @db.VarChar(64)
+  metadata   String?  @db.Text // JSON 额外数据
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@index([eventType])
+  @@index([createdAt])
+  @@index([utmSource])
+  @@map("event_log")
+}

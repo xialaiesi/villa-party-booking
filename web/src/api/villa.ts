@@ -27,3 +27,11 @@ export function getHome() {
 export function getSiteConfig() {
   return request.get('/api/site-config');
 }
+
+export function getHomeStats() {
+  return request.get('/api/home/stats');
+}
+
+export function getLanding() {
+  return request.get('/api/home/landing');
+}

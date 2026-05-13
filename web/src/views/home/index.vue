@@ -2,6 +2,12 @@
   <div class="home-page">
     <!-- Hero -->
     <div class="hero" :style="heroStyle">
+      <video
+        v-if="siteConfig.hero_video"
+        class="hero-video"
+        :src="siteConfig.hero_video"
+        autoplay muted loop playsinline
+      />
       <div class="hero-overlay" />
       <div class="container hero-content">
         <h1>{{ siteConfig.hero_title || '找到你的完美别墅趴场地' }}</h1>
@@ -14,6 +20,24 @@
         </div>
         <div class="scene-tags">
           <span v-for="(t, i) in scenes" :key="t" :class="'tag-' + (Number(i) % 6)" @click="goSearch(t)">{{ t }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 数据信任条 -->
+    <div class="trust-bar" v-if="homeStats.villaCount">
+      <div class="container trust-inner">
+        <div class="trust-item">
+          <b ref="statVilla">{{ homeStats.villaCount }}+</b>
+          <span>精选别墅</span>
+        </div>
+        <div class="trust-item">
+          <b>{{ homeStats.orderCount }}+</b>
+          <span>成功活动</span>
+        </div>
+        <div class="trust-item">
+          <b>{{ homeStats.reviewCount }}+</b>
+          <span>真实好评</span>
         </div>
       </div>
     </div>
@@ -52,6 +76,28 @@
           </div>
         </div>
         <el-skeleton v-else :rows="5" animated />
+      </div>
+    </div>
+
+    <!-- 真实案例 -->
+    <div class="section-wrap bg-warm" v-if="featuredCases.length">
+      <div class="container section section-compact">
+        <div class="section-header"><h2>看看上周的趴体</h2></div>
+        <div class="cases-scroll">
+          <div class="case-card" v-for="c in featuredCases" :key="c.id" @click="goDetail(c.villaId)">
+            <div class="case-media">
+              <img :src="resolveImg(c.cover)" loading="lazy" @error="onImgError" />
+              <div class="case-play" v-if="c.hasVideo">&#9654;</div>
+            </div>
+            <div class="case-body">
+              <div class="case-quote">"{{ c.content }}"</div>
+              <div class="case-meta">
+                <span class="case-rating">{{ '★'.repeat(c.rating) }}</span>
+                <span class="case-user">{{ c.nickname }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -146,6 +192,20 @@
       </div>
     </footer>
 
+    <!-- 微信咨询浮动按钮 -->
+    <div class="wechat-fab" @click="showWechatModal = true" v-if="siteConfig.landing_wechat_id || siteConfig.landing_wechat_qr">
+      <div class="wechat-fab-icon">微信</div>
+    </div>
+    <div class="wechat-modal-overlay" v-if="showWechatModal" @click.self="showWechatModal = false">
+      <div class="wechat-modal-card">
+        <div class="wechat-modal-close" @click="showWechatModal = false">&times;</div>
+        <h3>微信咨询</h3>
+        <p>扫码或搜索微信号添加</p>
+        <img v-if="siteConfig.landing_wechat_qr" :src="siteConfig.landing_wechat_qr" class="wechat-qr" />
+        <p class="wechat-id">微信号：{{ siteConfig.landing_wechat_id || 'villa_service' }}</p>
+      </div>
+    </div>
+
     <!-- 返回顶部 -->
     <el-backtop :visibility-height="300" :right="40" :bottom="40" />
   </div>
@@ -155,8 +215,9 @@
 import { ref, reactive, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { Search } from '@element-plus/icons-vue';
-import { getHome, getSiteConfig } from '../../api/villa';
+import { getHome, getSiteConfig, getHomeStats, getLanding } from '../../api/villa';
 import { thumbUrl } from '../../utils/request';
+import { trackEvent } from '../../utils/tracker';
 
 const router = useRouter();
 const keyword = ref('');
@@ -168,11 +229,15 @@ const activityPlans = ref<any[]>([]);
 const localServices = ref<any[]>([]);
 const showPlans = ref(true);
 const showServices = ref(false);
+const showWechatModal = ref(false);
 const resolveImg = thumbUrl;
+const homeStats = reactive({ villaCount: 0, orderCount: 0, reviewCount: 0 });
+const featuredCases = ref<any[]>([]);
 
 const siteConfig = reactive<Record<string, string>>({
-  hero_title: '', hero_subtitle: '', hero_bg: '', hero_image: '',
+  hero_title: '', hero_subtitle: '', hero_bg: '', hero_image: '', hero_video: '',
   banners: '[]', scene_tags: '[]', footer_text: '',
+  landing_wechat_qr: '', landing_wechat_id: '',
 });
 
 // 显示名 → 搜索标签的映射
@@ -185,15 +250,17 @@ const scenes = computed(() => {
   catch { return ['团建聚会', '生日派对', '朋友聚会', '亲子活动', '毕业趴', '闺蜜趴']; }
 });
 const heroStyle = computed(() => {
+  if (siteConfig.hero_video) return {};
   if (siteConfig.hero_image) {
     return { backgroundImage: `url(${siteConfig.hero_image})`, backgroundSize: 'cover', backgroundPosition: 'center' };
   }
-  return { background: siteConfig.hero_bg || 'linear-gradient(135deg, #ff6b35, #ff8f65)' };
+  return { backgroundImage: 'url(/images/hero-home.jpg)', backgroundSize: 'cover', backgroundPosition: 'center' };
 });
 
 onMounted(async () => {
-  const [cfg, home] = await Promise.allSettled([getSiteConfig(), getHome()]);
+  const [cfg, home, statsRes, landingRes] = await Promise.allSettled([getSiteConfig(), getHome(), getHomeStats(), getLanding()]);
   if (cfg.status === 'fulfilled') Object.assign(siteConfig, cfg.value as any);
+  if (statsRes.status === 'fulfilled') Object.assign(homeStats, statsRes.value as any);
   if (home.status === 'fulfilled') {
     const d = home.value as any;
     banners.value = d.banners || [];
@@ -202,6 +269,19 @@ onMounted(async () => {
     themePacks.value = d.themePacks || [];
     activityPlans.value = d.activityPlans || [];
     localServices.value = d.localServices || [];
+  }
+  // 真实案例（从 landing 数据中取）
+  if (landingRes.status === 'fulfilled') {
+    const ld = landingRes.value as any;
+    featuredCases.value = (ld.cases || []).slice(0, 4).map((c: any) => ({
+      id: c.id,
+      villaId: c.villa?.id,
+      cover: c.videos?.[0]?.cover || c.villa?.coverImage || c.images?.[0],
+      hasVideo: c.videos?.length > 0,
+      content: c.content ? (c.content.length > 50 ? c.content.slice(0, 50) + '...' : c.content) : '非常棒的体验！',
+      rating: c.rating,
+      nickname: c.user?.nickname || '匿名用户',
+    }));
   }
 });
 
@@ -272,6 +352,83 @@ function onImgError(e: Event) {
 .scene-tags .tag-4:hover { background: #9c27b0; }
 .scene-tags .tag-5 { background: rgba(255,152,0,0.85); color: #fff; }
 .scene-tags .tag-5:hover { background: #ff9800; }
+
+/* ===== Hero视频 ===== */
+.hero-video {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  object-fit: cover; z-index: 0;
+}
+
+/* ===== 信任条 ===== */
+.trust-bar { background: #fff; padding: 20px 0; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
+.trust-inner { display: flex; justify-content: center; gap: 64px; }
+.trust-item { text-align: center; }
+.trust-item b { display: block; font-size: 28px; font-weight: 900; color: #ff6b35; }
+.trust-item span { font-size: 13px; color: #94a3b8; }
+
+/* ===== 真实案例 ===== */
+.cases-scroll {
+  display: flex; gap: 16px; overflow-x: auto;
+  padding-bottom: 8px; scroll-snap-type: x mandatory;
+}
+.cases-scroll::-webkit-scrollbar { height: 4px; }
+.cases-scroll::-webkit-scrollbar-thumb { background: #e0d6cc; border-radius: 2px; }
+.case-card {
+  flex: 0 0 260px; scroll-snap-align: start;
+  border-radius: 12px; overflow: hidden; background: #fff;
+  cursor: pointer; transition: transform 0.25s;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+}
+.case-card:hover { transform: translateY(-3px); }
+.case-media { position: relative; height: 160px; }
+.case-media img { width: 100%; height: 100%; object-fit: cover; }
+.case-play {
+  position: absolute; top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 44px; height: 44px;
+  background: rgba(0,0,0,0.5); border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  color: #fff; font-size: 16px;
+}
+.case-body { padding: 12px; }
+.case-quote { font-size: 13px; color: #475569; line-height: 1.5; margin-bottom: 8px; }
+.case-meta { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+.case-rating { color: #f59e0b; }
+.case-user { color: #94a3b8; }
+
+/* ===== 微信浮动按钮 ===== */
+.wechat-fab {
+  position: fixed; right: 24px; bottom: 100px;
+  width: 52px; height: 52px;
+  background: #07c160; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; z-index: 50;
+  box-shadow: 0 4px 16px rgba(7,193,96,0.4);
+  transition: transform 0.3s;
+}
+.wechat-fab:hover { transform: scale(1.1); }
+.wechat-fab-icon { color: #fff; font-size: 13px; font-weight: 700; }
+.wechat-modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.5);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 200;
+}
+.wechat-modal-card {
+  background: #fff; border-radius: 16px;
+  padding: 32px 28px; text-align: center;
+  max-width: 340px; width: 90%;
+  position: relative;
+}
+.wechat-modal-close {
+  position: absolute; top: 10px; right: 14px;
+  font-size: 24px; color: #94a3b8; cursor: pointer;
+}
+.wechat-modal-card h3 { font-size: 18px; margin-bottom: 6px; }
+.wechat-modal-card p { font-size: 13px; color: #64748b; margin-bottom: 12px; }
+.wechat-qr { width: 180px; height: 180px; border-radius: 10px; }
+.wechat-id { font-size: 14px; color: #1e293b; font-weight: 600; margin-top: 12px; }
 
 /* ===== Section 通用 ===== */
 .section-wrap { padding: 0; }
@@ -408,6 +565,11 @@ function onImgError(e: Event) {
   .search-box .el-button { border-radius: 12px; width: 100%; }
   .scene-tags { gap: 8px; }
   .scene-tags span { padding: 6px 14px; font-size: 12px; }
+
+  .trust-inner { gap: 24px; }
+  .trust-item b { font-size: 20px; }
+  .case-card { flex: 0 0 220px; }
+  .case-media { height: 130px; }
 
   .section { padding: 24px 0; }
   .section-compact { padding: 18px 0; }

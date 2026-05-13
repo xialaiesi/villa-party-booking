@@ -36,6 +36,7 @@ import { ImportModule } from './modules/import/import.module';
 import { UploadModule } from './modules/upload/upload.module';
 import { SiteConfigModule } from './modules/site-config/site-config.module';
 import { ReviewModule } from './modules/review/review.module';
+import { AnalyticsModule } from './modules/analytics/analytics.module';
 
 @Module({
   imports: [
@@ -74,6 +75,7 @@ import { ReviewModule } from './modules/review/review.module';
     UploadModule,
     SiteConfigModule,
     ReviewModule,
+    AnalyticsModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: AllExceptionsFilter },

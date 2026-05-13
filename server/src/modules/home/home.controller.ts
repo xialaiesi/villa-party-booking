@@ -151,6 +151,104 @@ export class HomeController {
     };
   }
 
+  /** 平台公开统计数据（落地页/首页信任条） */
+  @Public()
+  @Get('stats')
+  async getStats() {
+    const [villaCount, orderCount, reviewCount, reviewAvg] = await Promise.all([
+      this.prisma.villa.count({ where: { status: 1 } }),
+      this.prisma.order.count({ where: { status: { in: [3, 4, 5] } } }),
+      this.prisma.review.count(),
+      this.prisma.review.aggregate({ _avg: { rating: true } }),
+    ]);
+    return {
+      villaCount,
+      orderCount,
+      reviewCount,
+      avgRating: reviewAvg._avg.rating ? Number(reviewAvg._avg.rating.toFixed(1)) : 0,
+    };
+  }
+
+  /** 落地页数据：精选案例(高分评价含视频) + 精选别墅 + 统计 */
+  @Public()
+  @Get('landing')
+  async getLandingData() {
+    const now = new Date();
+
+    const [featuredReviews, villas, stats] = await Promise.all([
+      // 精选案例：高分+有视频+审核通过
+      this.prisma.review.findMany({
+        where: {
+          rating: { gte: 4 },
+          videoStatus: 1,
+          videos: { not: null },
+        },
+        orderBy: { rating: 'desc' },
+        take: 6,
+        include: {
+          user: { select: { nickname: true, avatar: true } },
+          villa: { select: { name: true, coverImage: true, maxGuests: true, tags: true } },
+          order: { select: { guests: true, checkIn: true } },
+        },
+      }),
+      // 精选别墅
+      this.prisma.villa.findMany({
+        where: { status: 1 },
+        orderBy: { sortOrder: 'desc' },
+        take: 6,
+        include: {
+          images: { take: 1, orderBy: { sortOrder: 'asc' } },
+          facilities: { include: { facility: true }, take: 5 },
+          merchant: { select: { name: true } },
+          reviews: { where: { rating: { gte: 4 } }, select: { rating: true }, take: 100 },
+        },
+      }),
+      // 统计
+      Promise.all([
+        this.prisma.villa.count({ where: { status: 1 } }),
+        this.prisma.order.count({ where: { status: { in: [3, 4, 5] } } }),
+        this.prisma.review.count(),
+      ]),
+    ]);
+
+    return {
+      cases: featuredReviews.map((r: any) => ({
+        id: Number(r.id),
+        rating: r.rating,
+        content: r.content,
+        videos: r.videos ? JSON.parse(r.videos) : [],
+        images: r.images ? JSON.parse(r.images) : [],
+        user: { nickname: r.user?.nickname, avatar: r.user?.avatar },
+        villa: {
+          name: r.villa?.name,
+          coverImage: r.villa?.coverImage,
+          maxGuests: r.villa?.maxGuests,
+          tags: r.villa?.tags,
+        },
+        guests: r.order?.guests,
+        checkIn: r.order?.checkIn,
+      })),
+      villas: villas.map((v: any) => {
+        const ratings = v.reviews || [];
+        const avg = ratings.length ? (ratings.reduce((s: number, r: any) => s + r.rating, 0) / ratings.length) : 0;
+        return {
+          id: Number(v.id),
+          name: v.name,
+          coverImage: v.coverImage || v.images?.[0]?.url,
+          basePrice: Number(v.basePrice),
+          maxGuests: v.maxGuests,
+          tags: v.tags,
+          address: v.address,
+          merchantName: v.merchant?.name,
+          facilities: v.facilities?.map((f: any) => f.facility.name),
+          ratingAvg: avg ? Number(avg.toFixed(1)) : null,
+          ratingCount: ratings.length,
+        };
+      }),
+      stats: { villaCount: stats[0], orderCount: stats[1], reviewCount: stats[2] },
+    };
+  }
+
   /** 我的页面统计数据 */
   @Get('mine/stats')
   async getMineStats(@CurrentUser('sub') userId: number) {

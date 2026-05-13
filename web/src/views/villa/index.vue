@@ -187,6 +187,20 @@
           </div>
           <el-empty v-else description="暂无评价" :image-size="80" />
         </div>
+
+        <!-- 相似别墅推荐 -->
+        <div class="card" v-if="similarVillas.length">
+          <h3>看看类似的</h3>
+          <div class="similar-grid">
+            <div class="similar-card" v-for="sv in similarVillas" :key="sv.id" @click="$router.push('/villa/' + sv.id)">
+              <img :src="thumbUrl(sv.coverImage)" loading="lazy" />
+              <div class="similar-info">
+                <div class="similar-name">{{ sv.name }}</div>
+                <div class="similar-meta">{{ sv.maxGuests }}人 · ¥{{ sv.basePrice }}起</div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- 右侧预订栏 -->
@@ -209,22 +223,57 @@
             立即预订
           </el-button>
           <el-button size="large" class="fav-btn">❤ 收藏</el-button>
+          <el-button size="large" class="share-btn" @click="generateShareCard">📤 分享</el-button>
+
+          <!-- 紧迫感 -->
+          <div class="urgency-info" v-if="bookingStats.monthOrders > 0">
+            <span>本月已被预订 {{ bookingStats.monthOrders }} 次</span>
+          </div>
+          <div class="urgency-info next-date" v-if="bookingStats.nextAvailable">
+            <span>最近可订：{{ bookingStats.nextAvailable }}</span>
+          </div>
 
           <div class="contact-info">
             <div class="contact-title">需要帮助？</div>
             <div class="contact-phone">📞 400-xxx-xxxx</div>
           </div>
+
+          <!-- 微信咨询 -->
+          <div class="wechat-consult" @click="showWechat = true">
+            <span>不确定？先微信聊聊</span>
+          </div>
+        </div>
+
+        <!-- 微信弹窗 -->
+        <div class="wechat-overlay" v-if="showWechat" @click.self="showWechat = false">
+          <div class="wechat-popup">
+            <div class="wechat-popup-close" @click="showWechat = false">&times;</div>
+            <h3>微信咨询</h3>
+            <p>扫码或搜索添加微信</p>
+            <p class="wechat-popup-id">微信号：villa_service</p>
+          </div>
         </div>
       </div>
     </div>
+    <!-- 分享卡片弹窗 -->
+    <div class="share-modal" v-if="shareCardUrl" @click.self="shareCardUrl = ''">
+      <div class="share-card-wrap">
+        <div class="share-card-close" @click="shareCardUrl = ''">&times;</div>
+        <img :src="shareCardUrl" class="share-card-img" />
+        <p class="share-tip">长按图片保存，分享给朋友</p>
+        <button class="share-download-btn" @click="downloadShareCard">保存到手机</button>
+      </div>
+    </div>
+    <canvas ref="shareCanvas" style="display: none;" />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
+import { ref, reactive, computed, watch, onMounted, onUnmounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { getVilla, getVillaReviews } from '../../api/villa';
+import { getVilla, getVillaReviews, listVillas } from '../../api/villa';
 import { detailUrl, thumbUrl } from '../../utils/request';
+import { trackEvent } from '../../utils/tracker';
 import { useUserStore } from '../../store/user';
 import { ElMessage } from 'element-plus';
 
@@ -240,6 +289,11 @@ const currentIndex = ref(0);
 const reviewSort = ref('latest');
 const mainImageLoading = ref(true);
 const mainImageError = ref(false);
+const similarVillas = ref<any[]>([]);
+const bookingStats = reactive({ monthOrders: 0, nextAvailable: '' });
+const showWechat = ref(false);
+const shareCardUrl = ref('');
+const shareCanvas = ref<HTMLCanvasElement>();
 
 // 切换图片时重置加载状态
 watch(currentIndex, () => {
@@ -331,6 +385,16 @@ onMounted(async () => {
   try {
     villa.value = await getVilla(id);
     await fetchReviews('latest');
+    // 加载相似别墅
+    const res: any = await listVillas({ pageSize: 5 });
+    const list = (res.list || res || []).filter((v: any) => Number(v.id) !== id);
+    similarVillas.value = list.slice(0, 4).map((v: any) => ({
+      id: Number(v.id),
+      name: v.name,
+      coverImage: v.coverImage || v.images?.[0]?.url,
+      basePrice: Number(v.basePrice),
+      maxGuests: v.maxGuests,
+    }));
   } catch (e) { console.error(e); }
 });
 
@@ -367,6 +431,105 @@ function formatDuration(s: number) {
   const m = Math.floor(s / 60);
   const sec = s % 60;
   return `${m}:${sec.toString().padStart(2, '0')}`;
+}
+
+// ===== 分享卡片 =====
+async function generateShareCard() {
+  if (!villa.value || !shareCanvas.value) return;
+  const canvas = shareCanvas.value;
+  const w = 750;
+  const h = 1000;
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext('2d')!;
+
+  // 背景
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(0, 0, w, h);
+
+  // 顶部图片区域
+  try {
+    const imgUrl = detailUrl(villa.value.coverImage || villa.value.images?.[0]?.url || '');
+    const img = await loadImage(imgUrl);
+    ctx.drawImage(img, 0, 0, w, 420);
+  } catch {
+    ctx.fillStyle = '#f1f5f9';
+    ctx.fillRect(0, 0, w, 420);
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = '24px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('别墅实景', w / 2, 220);
+  }
+
+  // 别墅名
+  ctx.textAlign = 'left';
+  ctx.fillStyle = '#1e293b';
+  ctx.font = 'bold 36px PingFang SC, sans-serif';
+  ctx.fillText(villa.value.name, 40, 490);
+
+  // 亮点
+  const facilities = villa.value.facilities?.slice(0, 4).map((f: any) => f.name).join(' · ') || '';
+  ctx.fillStyle = '#64748b';
+  ctx.font = '24px PingFang SC, sans-serif';
+  ctx.fillText(facilities, 40, 540);
+
+  // 规格
+  ctx.fillText(`${villa.value.maxGuests}人 · ${villa.value.bedrooms}卧 · ${villa.value.area}㎡`, 40, 585);
+
+  // 价格
+  ctx.fillStyle = '#ff6b35';
+  ctx.font = 'bold 48px PingFang SC, sans-serif';
+  ctx.fillText(`¥${villa.value.basePrice}`, 40, 660);
+  ctx.fillStyle = '#94a3b8';
+  ctx.font = '24px PingFang SC, sans-serif';
+  ctx.fillText('起/晚', 40 + ctx.measureText(`¥${villa.value.basePrice}`).width + 8, 660);
+
+  // 评分
+  if (villa.value.ratingAvg) {
+    ctx.fillStyle = '#f59e0b';
+    ctx.font = '28px PingFang SC, sans-serif';
+    const ratingText = `★ ${villa.value.ratingAvg} (${villa.value.ratingCount}条评价)`;
+    ctx.fillText(ratingText, 40, 710);
+  }
+
+  // 底部引导
+  ctx.fillStyle = '#f8f6f3';
+  ctx.fillRect(0, 760, w, 240);
+  ctx.fillStyle = '#1e293b';
+  ctx.font = 'bold 28px PingFang SC, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('扫码或搜索查看详情', w / 2, 830);
+
+  // 链接
+  ctx.fillStyle = '#94a3b8';
+  ctx.font = '22px PingFang SC, sans-serif';
+  ctx.fillText(window.location.href, w / 2, 880);
+
+  // 品牌
+  ctx.fillStyle = '#ff6b35';
+  ctx.font = 'bold 22px PingFang SC, sans-serif';
+  ctx.fillText('别墅轰趴', w / 2, 940);
+
+  shareCardUrl.value = canvas.toDataURL('image/png');
+  trackEvent('share_click', { targetId: Number(route.params.id), targetType: 'villa' });
+}
+
+function loadImage(src: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = src;
+  });
+}
+
+function downloadShareCard() {
+  if (!shareCardUrl.value) return;
+  const link = document.createElement('a');
+  link.download = `${villa.value?.name || '别墅'}-分享卡片.png`;
+  link.href = shareCardUrl.value;
+  link.click();
 }
 </script>
 
@@ -561,12 +724,92 @@ function formatDuration(s: number) {
   margin-bottom: 12px;
 }
 .fav-btn { width: 100%; }
+.share-btn { width: 100%; margin-top: 8px; margin-left: 0 !important; }
+
+/* 分享卡片弹窗 */
+.share-modal {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.6);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 200; backdrop-filter: blur(4px);
+}
+.share-card-wrap {
+  background: #fff; border-radius: 16px;
+  padding: 24px; text-align: center;
+  max-width: 420px; width: 90%;
+  position: relative;
+}
+.share-card-close {
+  position: absolute; top: 8px; right: 14px;
+  font-size: 28px; color: #94a3b8; cursor: pointer;
+}
+.share-card-img { width: 100%; border-radius: 10px; }
+.share-tip { font-size: 13px; color: #94a3b8; margin: 12px 0 8px; }
+.share-download-btn {
+  background: linear-gradient(135deg, #ff6b35, #ff4500);
+  color: #fff; border: none; border-radius: 24px;
+  padding: 12px 36px; font-size: 15px; font-weight: 600;
+  cursor: pointer; transition: all 0.3s;
+}
+.share-download-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(255,107,53,0.4); }
 .contact-info {
   margin-top: 24px; padding-top: 20px; border-top: 1px solid #f5f5f5;
   text-align: center;
 }
 .contact-title { font-size: 13px; color: #999; }
 .contact-phone { font-size: 18px; color: #ff6b35; font-weight: bold; margin-top: 6px; }
+
+/* 相似别墅 */
+.similar-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+.similar-card {
+  display: flex; gap: 12px; cursor: pointer;
+  padding: 10px; border-radius: 10px;
+  transition: background 0.2s;
+}
+.similar-card:hover { background: #f8fafc; }
+.similar-card img { width: 100px; height: 70px; border-radius: 8px; object-fit: cover; flex-shrink: 0; }
+.similar-info { flex: 1; display: flex; flex-direction: column; justify-content: center; }
+.similar-name { font-size: 14px; font-weight: 600; color: #1e293b; }
+.similar-meta { font-size: 12px; color: #94a3b8; margin-top: 4px; }
+
+/* 紧迫感信息 */
+.urgency-info {
+  text-align: center; font-size: 13px; color: #f59e0b;
+  background: #fffbeb; padding: 8px; border-radius: 8px;
+  margin-top: 12px; font-weight: 500;
+}
+.urgency-info.next-date { color: #22c55e; background: #f0fdf4; margin-top: 8px; }
+
+/* 微信咨询按钮 */
+.wechat-consult {
+  margin-top: 16px; text-align: center;
+  padding: 12px; border-radius: 10px;
+  background: #f0fdf4; color: #16a34a;
+  cursor: pointer; font-size: 14px; font-weight: 600;
+  transition: all 0.3s; border: 1px solid #bbf7d0;
+}
+.wechat-consult:hover { background: #dcfce7; }
+
+/* 微信弹窗 */
+.wechat-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.5);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 200;
+}
+.wechat-popup {
+  background: #fff; border-radius: 16px;
+  padding: 32px 28px; text-align: center;
+  max-width: 340px; width: 90%;
+  position: relative;
+}
+.wechat-popup-close {
+  position: absolute; top: 10px; right: 14px;
+  font-size: 24px; color: #94a3b8; cursor: pointer;
+}
+.wechat-popup h3 { font-size: 18px; margin-bottom: 8px; }
+.wechat-popup p { font-size: 13px; color: #64748b; }
+.wechat-popup-id { font-size: 16px !important; color: #1e293b !important; font-weight: 600; margin-top: 12px !important; }
 
 /* 骨架屏 */
 .img-skeleton {

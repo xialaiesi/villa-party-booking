@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router';
+import { trackPageView, trackEvent } from '../utils/tracker';
 
 const routes = [
   {
@@ -18,6 +19,11 @@ const routes = [
     ],
   },
   {
+    path: '/landing',
+    component: () => import('../views/landing/index.vue'),
+    meta: { title: '别墅趴 — 周末来一场忘不了的聚会', public: true },
+  },
+  {
     path: '/login',
     component: () => import('../views/login/index.vue'),
     meta: { title: '登录', public: true },
@@ -35,6 +41,18 @@ router.beforeEach((to, _from, next) => {
     next('/login?redirect=' + encodeURIComponent(to.fullPath));
   } else {
     next();
+  }
+});
+
+router.afterEach((to) => {
+  trackPageView();
+  // 自动追踪别墅详情页浏览
+  if (to.path.startsWith('/villa/') && to.params.id) {
+    trackEvent('villa_view', { targetId: Number(to.params.id), targetType: 'villa' });
+  }
+  // 自动追踪预订页打开
+  if (to.path.startsWith('/booking/')) {
+    trackEvent('booking_open', { targetId: Number(to.params.id), targetType: 'villa' });
   }
 });
 

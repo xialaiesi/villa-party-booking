@@ -27,6 +27,7 @@ const routes = [
       { path: 'video-review', component: () => import('../views/review/video-review.vue'), meta: { title: '视频审核' } },
       { path: 'merchant', component: () => import('../views/merchant/index.vue'), meta: { title: '商家管理' } },
       { path: 'finance', component: () => import('../views/finance/index.vue'), meta: { title: '财务中心' } },
+      { path: 'analytics', component: () => import('../views/analytics/index.vue'), meta: { title: '流量分析' } },
     ],
   },
 ];

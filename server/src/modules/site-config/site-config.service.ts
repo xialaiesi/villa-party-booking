@@ -7,9 +7,19 @@ const DEFAULTS: Record<string, string> = {
   hero_subtitle: '团建 · 生日 · 聚会 · 亲子 · 一站式解决',
   hero_bg: 'linear-gradient(135deg, #ff6b35, #ff8f65)',
   hero_image: '',
+  hero_video: '',
   banners: '[]',
   scene_tags: '["团建聚会","生日派对","朋友聚会","亲子活动","毕业趴","闺蜜趴"]',
   footer_text: '',
+  // 落地页配置
+  landing_hero_video: '',
+  landing_hero_image: '',
+  landing_hero_title: '周末，来一场忘不了的别墅趴',
+  landing_hero_subtitle: '',
+  landing_city: '深圳',
+  landing_wechat_qr: '',
+  landing_wechat_id: 'villa_service',
+  landing_phone: '400-888-8888',
 };
 
 @Injectable()

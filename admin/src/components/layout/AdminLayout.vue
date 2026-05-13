@@ -15,6 +15,9 @@
           <el-menu-item index="/dashboard">
             <span>数据看板</span>
           </el-menu-item>
+          <el-menu-item index="/analytics">
+            <span>流量分析</span>
+          </el-menu-item>
           <el-menu-item index="/villa">
             <span>房源管理</span>
           </el-menu-item>
