@@ -151,7 +151,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import {
-  DataAnalysis, House, ShoppingBag, Setting,
+  DataAnalysis, ShoppingBag, Setting,
   Present, PictureFilled, Bell,
 } from '@element-plus/icons-vue';
 import { ElMessage } from 'element-plus';
