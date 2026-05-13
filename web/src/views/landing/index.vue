@@ -322,7 +322,6 @@ const currentHeroSub = computed(() => {
   return heroSlides[heroIndex.value].sub;
 });
 
-const currentCity = computed(() => siteConfig.landing_city || '深圳');
 
 // #7 本周咨询数
 const weeklyConsults = computed(() => Math.max(23, stats.orderCount * 3 + 15));

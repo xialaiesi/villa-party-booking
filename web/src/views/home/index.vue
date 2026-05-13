@@ -217,7 +217,7 @@ import { useRouter } from 'vue-router';
 import { Search } from '@element-plus/icons-vue';
 import { getHome, getSiteConfig, getHomeStats, getLanding } from '../../api/villa';
 import { thumbUrl } from '../../utils/request';
-import { trackEvent } from '../../utils/tracker';
+
 
 const router = useRouter();
 const keyword = ref('');
