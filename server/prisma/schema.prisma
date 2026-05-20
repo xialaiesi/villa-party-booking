@@ -100,6 +100,7 @@ model Villa {
   groupBuys      GroupBuy[]
   posts          Post[]
   seasonalEvents SeasonalEvent[] @relation("SeasonalVilla")
+  xhsNotes       XhsNote[]
 
   @@index([merchantId])
   @@map("villa")
@@ -203,6 +204,8 @@ model User {
   postComments   PostComment[]
   postLikes      PostLike[]
   chatSessions   ChatSession[]
+  xhsNotes       XhsNote[]
+  xhsNoteComments XhsNoteComment[]
 
   @@map("user")
 }
@@ -566,6 +569,70 @@ model ServiceOrder {
   user    User         @relation(fields: [userId], references: [id])
 
   @@map("service_order")
+}
+
+// ==================== 种草笔记 ====================
+
+model XhsNote {
+  id           BigInt   @id @default(autoincrement())
+  userId       BigInt?  @map("user_id")       // 用户发布
+  merchantId   BigInt?  @map("merchant_id")    // 商家发布
+  villaId      BigInt?  @map("villa_id")       // 关联别墅
+  title        String   @db.VarChar(50)        // 标题
+  content      String   @db.Text               // 正文
+  coverImage   String   @map("cover_image") @db.VarChar(500) // 封面图
+  images       String?  @db.Text               // JSON 图片数组（最多9张）
+  tags         String?  @db.Text               // JSON 标签数组
+  style        String   @default("plant") @db.VarChar(20) // plant/guide/scene
+  source       String   @default("original") @db.VarChar(20) // original/imported/ai_generated
+  viewCount    Int      @default(0) @map("view_count")
+  likeCount    Int      @default(0) @map("like_count")
+  collectCount Int      @default(0) @map("collect_count")
+  commentCount Int      @default(0) @map("comment_count")
+  status       Int      @default(1) @db.TinyInt // 0-草稿 1-已发布 2-隐藏
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  user         User?         @relation(fields: [userId], references: [id])
+  villa        Villa?        @relation(fields: [villaId], references: [id])
+  interactions XhsNoteInteraction[]
+  comments     XhsNoteComment[]
+
+  @@index([userId])
+  @@index([villaId])
+  @@index([merchantId])
+  @@index([status, createdAt])
+  @@map("xhs_note")
+}
+
+model XhsNoteInteraction {
+  id        BigInt   @id @default(autoincrement())
+  noteId    BigInt   @map("note_id")
+  userId    BigInt   @map("user_id")
+  type      String   @db.VarChar(10) // like/collect
+  createdAt DateTime @default(now()) @map("created_at")
+
+  note XhsNote @relation(fields: [noteId], references: [id], onDelete: Cascade)
+
+  @@unique([noteId, userId, type])
+  @@map("xhs_note_interaction")
+}
+
+model XhsNoteComment {
+  id        BigInt   @id @default(autoincrement())
+  noteId    BigInt   @map("note_id")
+  userId    BigInt   @map("user_id")
+  content   String   @db.VarChar(500)
+  parentId  BigInt?  @map("parent_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  note   XhsNote         @relation(fields: [noteId], references: [id], onDelete: Cascade)
+  user   User             @relation(fields: [userId], references: [id])
+  parent XhsNoteComment?  @relation("NoteCommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies XhsNoteComment[] @relation("NoteCommentReplies")
+
+  @@index([noteId])
+  @@map("xhs_note_comment")
 }
 
 // ==================== 趴友圈 ====================

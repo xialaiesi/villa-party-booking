@@ -52,6 +52,19 @@
       </view>
     </view>
 
+    <!-- 商家入口 -->
+    <view class="section">
+      <text class="section-title">商家中心</text>
+      <view class="list-menu">
+        <view class="list-item merchant-entry" @tap="goMerchant">
+          <text class="list-icon">🏢</text>
+          <text class="list-name">{{ merchantStore.isLoggedIn ? '进入管理后台' : '商家登录' }}</text>
+          <text class="merchant-badge" v-if="merchantStore.isLoggedIn">{{ merchantStore.adminInfo?.merchantName || '管理员' }}</text>
+          <text class="list-arrow">›</text>
+        </view>
+      </view>
+    </view>
+
     <!-- 其他设置 -->
     <view class="section">
       <text class="section-title">其他</text>
@@ -80,10 +93,12 @@
 import { ref } from 'vue';
 import { onShow } from '@dcloudio/uni-app';
 import { useUserStore } from '../../store/user';
+import { useMerchantStore } from '../../store/merchant';
 import { getMineStats } from '../../api/home';
 import { getUnreadCount } from '../../api/message';
 
 const userStore = useUserStore();
+const merchantStore = useMerchantStore();
 const stats = ref({ orderTotal: 0, pendingPay: 0, ongoing: 0, completed: 0, albumCount: 0, postCount: 0 });
 const unreadCount = ref(0);
 
@@ -153,6 +168,14 @@ function goContact() {
 function goAbout() {
   uni.showToast({ title: '别墅轰趴 v1.0', icon: 'none' });
 }
+
+function goMerchant() {
+  if (merchantStore.isLoggedIn) {
+    uni.navigateTo({ url: '/pages/merchant/dashboard/index' });
+  } else {
+    uni.navigateTo({ url: '/pages/merchant/login/index' });
+  }
+}
 </script>
 
 <style lang="scss">
@@ -216,4 +239,10 @@ function goAbout() {
 .list-icon { font-size: 36rpx; margin-right: 20rpx; }
 .list-name { flex: 1; font-size: 28rpx; color: #333; }
 .list-arrow { font-size: 36rpx; color: #ccc; }
+
+.merchant-entry { background: linear-gradient(135deg, #f0f7ff, #e8f0fe); }
+.merchant-badge {
+  font-size: 20rpx; color: #409EFF; background: rgba(64,158,255,0.1);
+  padding: 4rpx 14rpx; border-radius: 10rpx; margin-right: 10rpx;
+}
 </style>

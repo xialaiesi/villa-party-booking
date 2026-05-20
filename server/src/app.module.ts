@@ -37,6 +37,7 @@ import { UploadModule } from './modules/upload/upload.module';
 import { SiteConfigModule } from './modules/site-config/site-config.module';
 import { ReviewModule } from './modules/review/review.module';
 import { AnalyticsModule } from './modules/analytics/analytics.module';
+import { XhsNoteModule } from './modules/xhs-note/xhs-note.module';
 
 @Module({
   imports: [
@@ -76,6 +77,7 @@ import { AnalyticsModule } from './modules/analytics/analytics.module';
     SiteConfigModule,
     ReviewModule,
     AnalyticsModule,
+    XhsNoteModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: AllExceptionsFilter },

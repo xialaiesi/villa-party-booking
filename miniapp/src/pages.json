@@ -91,6 +91,106 @@
     {
       "path": "pages/review/index",
       "style": { "navigationBarTitleText": "评价" }
+    },
+    {
+      "path": "pages/xhs-note/index",
+      "style": { "navigationBarTitleText": "种草笔记" }
+    },
+    {
+      "path": "pages/xhs-note/detail",
+      "style": { "navigationBarTitleText": "笔记详情", "navigationStyle": "custom" }
+    },
+    {
+      "path": "pages/merchant/login/index",
+      "style": { "navigationBarTitleText": "商家登录", "navigationBarBackgroundColor": "#409EFF", "navigationBarTextStyle": "white" }
+    },
+    {
+      "path": "pages/merchant/dashboard/index",
+      "style": { "navigationBarTitleText": "管理中心", "navigationBarBackgroundColor": "#409EFF", "navigationBarTextStyle": "white" }
+    },
+    {
+      "path": "pages/merchant/villa-manage/index",
+      "style": { "navigationBarTitleText": "房源管理" }
+    },
+    {
+      "path": "pages/merchant/villa-edit/index",
+      "style": { "navigationBarTitleText": "编辑房源" }
+    },
+    {
+      "path": "pages/merchant/calendar/index",
+      "style": { "navigationBarTitleText": "房态日历" }
+    },
+    {
+      "path": "pages/merchant/order-manage/index",
+      "style": { "navigationBarTitleText": "订单管理" }
+    },
+    {
+      "path": "pages/merchant/order-detail/index",
+      "style": { "navigationBarTitleText": "订单详情" }
+    },
+    {
+      "path": "pages/merchant/package/index",
+      "style": { "navigationBarTitleText": "套餐管理" }
+    },
+    {
+      "path": "pages/merchant/facility/index",
+      "style": { "navigationBarTitleText": "设施管理" }
+    },
+    {
+      "path": "pages/merchant/activity-plan/index",
+      "style": { "navigationBarTitleText": "活动方案" }
+    },
+    {
+      "path": "pages/merchant/theme-pack/index",
+      "style": { "navigationBarTitleText": "氛围包管理" }
+    },
+    {
+      "path": "pages/merchant/local-service/index",
+      "style": { "navigationBarTitleText": "周边服务" }
+    },
+    {
+      "path": "pages/merchant/seasonal-event/index",
+      "style": { "navigationBarTitleText": "限定活动" }
+    },
+    {
+      "path": "pages/merchant/review/index",
+      "style": { "navigationBarTitleText": "评价管理" }
+    },
+    {
+      "path": "pages/merchant/video-review/index",
+      "style": { "navigationBarTitleText": "视频审核" }
+    },
+    {
+      "path": "pages/merchant/album/index",
+      "style": { "navigationBarTitleText": "相册管理" }
+    },
+    {
+      "path": "pages/merchant/finance/index",
+      "style": { "navigationBarTitleText": "财务中心", "navigationBarBackgroundColor": "#409EFF", "navigationBarTextStyle": "white" }
+    },
+    {
+      "path": "pages/merchant/analytics/index",
+      "style": { "navigationBarTitleText": "流量分析" }
+    },
+    {
+      "path": "pages/merchant/merchant-manage/index",
+      "style": { "navigationBarTitleText": "商家管理" }
+    },
+    {
+      "path": "pages/merchant/site-config/index",
+      "style": { "navigationBarTitleText": "站点配置" }
+    },
+    {
+      "path": "pages/merchant/message/index",
+      "style": { "navigationBarTitleText": "商家消息" }
+    },
+    {
+      "path": "pages/merchant/xhs-note/index",
+      "style": { "navigationBarTitleText": "种草笔记" }
+    },
+    {
+      "path": "pages/merchant/xhs-note/edit",
+      "style": { "navigationBarTitleText": "编辑笔记" }
     }
   ],
   "globalStyle": {
@@ -111,8 +211,8 @@
         "selectedIconPath": "static/tab/home-active.png"
       },
       {
-        "pagePath": "pages/community/index",
-        "text": "趴友圈",
+        "pagePath": "pages/xhs-note/index",
+        "text": "种草",
         "iconPath": "static/tab/home.png",
         "selectedIconPath": "static/tab/home-active.png"
       },

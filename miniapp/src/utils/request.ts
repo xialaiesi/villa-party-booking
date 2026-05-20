@@ -51,6 +51,10 @@ function getToken(): string {
   return uni.getStorageSync('token') || '';
 }
 
+function getAdminToken(): string {
+  return uni.getStorageSync('admin_token') || '';
+}
+
 export function request<T = any>(options: RequestOptions): Promise<T> {
   let url = `${BASE_URL}${options.url}`;
 
@@ -70,7 +74,7 @@ export function request<T = any>(options: RequestOptions): Promise<T> {
       data: options.data,
       header: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${getToken()}`,
+        Authorization: `Bearer ${url.includes('/api/admin/') ? getAdminToken() : getToken()}`,
       },
       success: (res: any) => {
         if (res.statusCode === 200) {
