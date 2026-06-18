@@ -105,8 +105,8 @@ export function confirmFinalPaid(id: number) {
   return request<any>({ url: `/api/admin/orders/${id}/final-paid`, method: 'POST' });
 }
 
-export function markCheckIn(id: number) {
-  return request<any>({ url: `/api/admin/orders/${id}/check-in`, method: 'POST' });
+export function markCheckIn(id: number, code: string) {
+  return request<any>({ url: `/api/admin/orders/${id}/check-in`, method: 'POST', data: { code } });
 }
 
 export function markComplete(id: number) {

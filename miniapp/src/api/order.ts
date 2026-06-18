@@ -22,12 +22,31 @@ export function getOrder(id: number) {
   return request<any>({ url: `/api/orders/${id}` });
 }
 
+export function getCancelPreview(id: number) {
+  return request<{
+    daysUntilCheckIn: number;
+    freeCancellable: boolean;
+    penaltyRate: number;
+    penaltyAmount: number;
+    paidAmount: number;
+    refundAmount: number;
+  }>({ url: `/api/orders/${id}/cancel-preview` });
+}
+
 export function cancelOrder(id: number, reason?: string) {
   return request<any>({
     url: `/api/orders/${id}/cancel`,
     method: 'POST',
     data: { reason },
   });
+}
+
+export function rescheduleOrder(id: number, data: {
+  checkIn: string;
+  checkOut?: string;
+  slotId?: number;
+}) {
+  return request<any>({ url: `/api/orders/${id}/reschedule`, method: 'POST', data });
 }
 
 export function signPact(id: number, data: {

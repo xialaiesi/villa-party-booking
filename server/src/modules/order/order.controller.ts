@@ -10,6 +10,7 @@ import {
 import { OrderService } from './order.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { SignPactDto } from './dto/sign-pact.dto';
+import { RescheduleDto } from './dto/reschedule.dto';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Public } from '../../common/decorators/public.decorator';
 import { ORDER_STATUS_MAP } from '../../common/constants/order-status';
@@ -84,6 +85,15 @@ export class OrderController {
     return this.orderService.signPact(id, userId, dto);
   }
 
+  /** 取消前预览违约金与退款明细 */
+  @Get(':id/cancel-preview')
+  async cancelPreview(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser('sub') userId: number,
+  ) {
+    return this.orderService.cancelPreview(id, userId);
+  }
+
   @Post(':id/cancel')
   async cancel(
     @Param('id', ParseIntPipe) id: number,
@@ -91,5 +101,15 @@ export class OrderController {
     @Body('reason') reason?: string,
   ) {
     return this.orderService.cancel(id, userId, reason);
+  }
+
+  /** 改期 / 延住（状态 1-3 可改） */
+  @Post(':id/reschedule')
+  async reschedule(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser('sub') userId: number,
+    @Body() dto: RescheduleDto,
+  ) {
+    return this.orderService.reschedule(id, userId, dto);
   }
 }

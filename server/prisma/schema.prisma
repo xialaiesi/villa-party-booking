@@ -325,6 +325,8 @@ model Order {
   leaderIdTail   String?   @map("leader_id_tail") @db.VarChar(8) // 身份证后四位
   partySize      Int?      @map("party_size")                    // 实际到场人数
   pactSignedAt   DateTime? @map("pact_signed_at")                // 派对公约签署时间
+  checkInCode    String?   @map("check_in_code") @db.VarChar(8)  // 到店核销码
+  penaltyAmount  Decimal   @default(0) @map("penalty_amount") @db.Decimal(10, 2) // 取消违约金
   remark         String?   @db.Text
   cancelReason   String?   @map("cancel_reason") @db.VarChar(255)
   createdAt      DateTime  @default(now()) @map("created_at")

@@ -362,24 +362,31 @@ export class AdminService {
     });
   }
 
-  /** 商家确认尾款到账（状态 2→3） */
+  /** 商家确认尾款到账（状态 2→3），同时生成到店核销码 */
   async confirmFinalPayment(ctx: AdminContext, id: number) {
     const order = await this.ensureOrderAccess(ctx, id);
     if (order.status !== 2) throw new BadRequestException('仅待付尾款的订单可确认');
     return this.prisma.order.update({
       where: { id },
-      data: { status: 3 },
+      data: { status: 3, checkInCode: this.generateCheckInCode() },
     });
   }
 
-  /** 商家标记已入住（状态 3→4） */
-  async markCheckedIn(ctx: AdminContext, id: number) {
+  /** 商家凭核销码标记已入住（状态 3→4，电子入住核销） */
+  async markCheckedIn(ctx: AdminContext, id: number, code: string) {
     const order = await this.ensureOrderAccess(ctx, id);
     if (order.status !== 3) throw new BadRequestException('仅已付全款的订单可标记入住');
+    if (!code || !order.checkInCode || code.trim() !== order.checkInCode) {
+      throw new BadRequestException('核销码不正确');
+    }
     return this.prisma.order.update({
       where: { id },
       data: { status: 4 },
     });
+  }
+
+  private generateCheckInCode(): string {
+    return Math.floor(100000 + Math.random() * 900000).toString();
   }
 
   /** 手动标记完成（状态 4→5） */

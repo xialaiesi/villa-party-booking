@@ -95,7 +95,7 @@
       <button class="btn-confirm" v-if="order.status === 1" @tap="handleAction('confirm', '确认接受此订单？')">确认订单</button>
       <button class="btn-reject" v-if="order.status === 1" @tap="handleReject">拒绝订单</button>
       <button class="btn-confirm" v-if="order.status === 2" @tap="handleAction('finalPaid', '确认尾款已到账？')">确认尾款</button>
-      <button class="btn-confirm" v-if="order.status === 3" @tap="handleAction('checkIn', '确认客人已入住？')">确认入住</button>
+      <button class="btn-confirm" v-if="order.status === 3" @tap="handleCheckIn">核销入住</button>
       <button class="btn-confirm" v-if="order.status === 4" @tap="handleAction('complete', '确认订单已完成？')">完成订单</button>
     </view>
   </view>
@@ -150,9 +150,31 @@ const actionMap: Record<string, (id: number) => Promise<any>> = {
   depositPaid: confirmDepositPaid,
   confirm: confirmOrder,
   finalPaid: confirmFinalPaid,
-  checkIn: markCheckIn,
   complete: markComplete,
 };
+
+function handleCheckIn() {
+  uni.showModal({
+    title: '到店核销',
+    editable: true,
+    placeholderText: '请输入客人出示的 6 位核销码',
+    success: async (res) => {
+      if (!res.confirm) return;
+      const code = (res.content || '').trim();
+      if (!code) {
+        uni.showToast({ title: '请输入核销码', icon: 'none' });
+        return;
+      }
+      try {
+        await markCheckIn(order.value.id, code);
+        uni.showToast({ title: '核销成功', icon: 'success' });
+        setTimeout(() => uni.navigateBack(), 500);
+      } catch (e: any) {
+        uni.showToast({ title: e?.message || '核销码不正确', icon: 'none' });
+      }
+    },
+  });
+}
 
 function handleAction(action: string, msg: string) {
   uni.showModal({

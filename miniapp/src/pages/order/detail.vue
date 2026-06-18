@@ -20,6 +20,33 @@
       </view>
     </view>
 
+    <!-- 到店核销码 -->
+    <view class="card checkin-code-card" v-if="order.status === 3 && order.checkInCode">
+      <text class="card-title">到店核销码</text>
+      <text class="checkin-code">{{ order.checkInCode }}</text>
+      <text class="checkin-tip">入住当天向管家出示此码完成核销</text>
+    </view>
+
+    <!-- 改期入口 -->
+    <picker
+      v-if="canReschedule"
+      mode="date"
+      :start="minRescheduleDate"
+      :value="order.checkIn"
+      @change="onRescheduleDate"
+    >
+      <view class="action-card">
+        <view class="action-item">
+          <text class="action-icon">🗓</text>
+          <view class="action-body">
+            <text class="action-label">改期 / 延住</text>
+            <text class="action-desc">更换入住日期，按差价多退少补</text>
+          </view>
+          <text class="action-arrow">›</text>
+        </view>
+      </view>
+    </picker>
+
     <!-- 别墅信息 -->
     <view class="card">
       <text class="card-title">别墅信息</text>
@@ -76,7 +103,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
 import { onLoad } from '@dcloudio/uni-app';
-import { getOrder, cancelOrder, payOrder } from '../../api/order';
+import { getOrder, cancelOrder, payOrder, getCancelPreview, rescheduleOrder } from '../../api/order';
 
 const order = ref<any>(null);
 const countdown = ref('');
@@ -110,6 +137,13 @@ const actionItems = computed(() => {
   return items;
 });
 
+const canReschedule = computed(() => [1, 2, 3].includes(order.value?.status));
+const minRescheduleDate = computed(() => {
+  const d = new Date();
+  d.setDate(d.getDate() + 1);
+  return d.toISOString().split('T')[0];
+});
+
 onLoad((query: any) => {
   orderId = parseInt(query.id);
   loadOrder();
@@ -139,9 +173,18 @@ function updateCountdown() {
 }
 
 async function handleCancel() {
+  let content = '确定要取消该订单吗？';
+  try {
+    const p = await getCancelPreview(orderId);
+    if (p.penaltyAmount > 0) {
+      content = `当前距入住不足 3 天，取消将扣除违约金 ¥${p.penaltyAmount}，预计退款 ¥${p.refundAmount}。确定取消？`;
+    } else if (p.paidAmount > 0) {
+      content = `可免费取消，预计全额退款 ¥${p.refundAmount}。确定取消？`;
+    }
+  } catch (e) { console.error(e); }
   uni.showModal({
     title: '确认取消',
-    content: '确定要取消该订单吗？',
+    content,
     success: async (res) => {
       if (res.confirm) {
         await cancelOrder(orderId);
@@ -149,6 +192,31 @@ async function handleCancel() {
       }
     },
   });
+}
+
+async function onRescheduleDate(e: any) {
+  const newCheckIn = e.detail.value;
+  if (!newCheckIn || newCheckIn === order.value.checkIn?.split('T')[0]) return;
+  const isSlot = order.value.slotId != null;
+  let checkOut: string | undefined;
+  if (!isSlot) {
+    const d = new Date(newCheckIn);
+    d.setDate(d.getDate() + (order.value.days || 1));
+    checkOut = d.toISOString().split('T')[0];
+  }
+  try {
+    const res = await rescheduleOrder(orderId, {
+      checkIn: newCheckIn,
+      checkOut,
+      slotId: isSlot ? order.value.slotId : undefined,
+    });
+    const diff = Number(res.priceDiff || 0);
+    const msg = diff > 0 ? `改期成功，需补差价 ¥${diff}` : diff < 0 ? `改期成功，退差价 ¥${-diff}` : '改期成功';
+    uni.showToast({ title: msg, icon: 'none' });
+    loadOrder();
+  } catch (e: any) {
+    uni.showToast({ title: e?.message || '改期失败', icon: 'none' });
+  }
 }
 
 async function handlePay() {
@@ -247,6 +315,9 @@ function statusDesc(s: number) {
 .action-arrow { font-size: 36rpx; color: #ccc; }
 
 .card { background: #fff; margin: 20rpx; padding: 30rpx; border-radius: 12rpx; }
+.checkin-code-card { text-align: center; }
+.checkin-code { display: block; font-size: 60rpx; font-weight: bold; letter-spacing: 8rpx; color: #ff6b35; margin: 12rpx 0; }
+.checkin-tip { font-size: 24rpx; color: #999; display: block; }
 .card-title { font-size: 30rpx; font-weight: bold; color: #333; display: block; margin-bottom: 16rpx; }
 .villa-name { font-size: 28rpx; color: #333; display: block; }
 .date-info, .guest-info { font-size: 26rpx; color: #666; display: block; margin-top: 8rpx; }

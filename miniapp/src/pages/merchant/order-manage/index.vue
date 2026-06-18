@@ -152,7 +152,25 @@ function confirmAction(title: string, action: () => Promise<any>) {
 function handleDepositPaid(o: any) { confirmAction('确认定金已到账？', () => confirmDepositPaid(o.id)); }
 function handleConfirm(o: any) { confirmAction('确认接受此订单？', () => confirmOrder(o.id)); }
 function handleFinalPaid(o: any) { confirmAction('确认尾款已到账？', () => confirmFinalPaid(o.id)); }
-function handleCheckIn(o: any) { confirmAction('确认客人已入住？', () => markCheckIn(o.id)); }
+function handleCheckIn(o: any) {
+  uni.showModal({
+    title: '到店核销',
+    editable: true,
+    placeholderText: '请输入客人出示的 6 位核销码',
+    success: async (res) => {
+      if (!res.confirm) return;
+      const code = (res.content || '').trim();
+      if (!code) { uni.showToast({ title: '请输入核销码', icon: 'none' }); return; }
+      try {
+        await markCheckIn(o.id, code);
+        uni.showToast({ title: '核销成功', icon: 'success' });
+        loadData();
+      } catch (e: any) {
+        uni.showToast({ title: e?.message || '核销码不正确', icon: 'none' });
+      }
+    },
+  });
+}
 function handleComplete(o: any) { confirmAction('确认订单已完成？', () => markComplete(o.id)); }
 
 function handleReject(o: any) {

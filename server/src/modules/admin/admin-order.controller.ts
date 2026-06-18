@@ -65,10 +65,14 @@ export class AdminOrderController {
     return this.adminService.confirmFinalPayment(ctx, id);
   }
 
-  /** 标记已入住（3→4） */
+  /** 凭核销码标记已入住（3→4） */
   @Post(':id/check-in')
-  async checkIn(@AdminCtx() ctx: AdminContext, @Param('id', ParseIntPipe) id: number) {
-    return this.adminService.markCheckedIn(ctx, id);
+  async checkIn(
+    @AdminCtx() ctx: AdminContext,
+    @Param('id', ParseIntPipe) id: number,
+    @Body('code') code: string,
+  ) {
+    return this.adminService.markCheckedIn(ctx, id, code);
   }
 
   /** 手动完成（4→5） */
