@@ -1,9 +1,13 @@
 import { Injectable, BadRequestException, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { MembershipService } from '../membership/membership.service';
 
 @Injectable()
 export class ReviewService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private membership: MembershipService,
+  ) {}
 
   /** 用户创建评价（订单状态=5 已完成） */
   async create(userId: number, data: { orderId: number; rating: number; content?: string; images?: string[]; videos?: string[] }) {
@@ -37,6 +41,16 @@ export class ReviewService {
       },
       include: { user: { select: { nickname: true, avatar: true } } },
     });
+
+    // 评价奖励成长值
+    const bonus = hasVideo ? 300 : 200;
+    await this.membership.addGrowth(
+      userId,
+      bonus,
+      'review',
+      hasVideo ? '发布视频测评' : '发布评价',
+      Number(review.id),
+    );
 
     return this.format(review);
   }

@@ -24,6 +24,20 @@
         <div class="hero-trust" v-if="stats.villaCount">
           本周已有 <b>{{ weeklyConsults }}</b> 人咨询预订
         </div>
+        <div class="hero-value-row">
+          <div class="hero-value-item">
+            <span>{{ siteConfig.landing_city || '深圳' }}</span>
+            <small>周边精选</small>
+          </div>
+          <div class="hero-value-item">
+            <span>¥200+</span>
+            <small>人均起</small>
+          </div>
+          <div class="hero-value-item">
+            <span>30秒</span>
+            <small>匹配推荐</small>
+          </div>
+        </div>
         <div class="scene-tabs">
           <span
             v-for="s in sceneTabs" :key="s.key"
@@ -32,7 +46,7 @@
           >{{ s.label }}</span>
         </div>
         <div class="hero-cta">
-          <button class="btn-primary" @click="openWechat()">微信咨询，免费推荐</button>
+          <button class="btn-primary" @click="openWechat('hero_primary')">免费推荐别墅</button>
           <button class="btn-ghost" @click="scrollTo('villas')">先看看别墅</button>
         </div>
       </div>
@@ -50,10 +64,21 @@
     </div>
 
     <!-- 第二屏：真实案例 -->
-    <section class="cases-section fade-section" ref="casesRef">
+    <section class="cases-section fade-section" :class="{ visible: landingLoading }" ref="casesRef">
       <div class="section-inner">
         <h2>看看他们的别墅趴</h2>
-        <div class="cases-scroll">
+        <div class="cases-scroll" v-if="landingLoading">
+          <div class="case-card case-card-skeleton" v-for="n in 4" :key="n">
+            <div class="case-media skeleton-block"></div>
+            <div class="case-body">
+              <div class="skeleton-pill"></div>
+              <div class="skeleton-line title"></div>
+              <div class="skeleton-line medium"></div>
+              <div class="skeleton-line short"></div>
+            </div>
+          </div>
+        </div>
+        <div class="cases-scroll" v-else>
           <div class="case-card" v-for="c in filteredCases" :key="c.id">
             <div class="case-media">
               <img v-if="!c.videos?.length" :src="resolveImg(c.villa?.coverImage || c.images?.[0])" loading="lazy" />
@@ -89,7 +114,7 @@
     </section>
 
     <!-- 第三屏：精选别墅 -->
-    <section class="villas-section fade-section" ref="villasRef">
+    <section class="villas-section fade-section" :class="{ visible: landingLoading }" ref="villasRef">
       <div class="section-inner">
         <h2>精选别墅</h2>
         <!-- #10 帮我选 快速匹配器 -->
@@ -117,7 +142,17 @@
             </div>
           </div>
         </div>
-        <div class="villa-grid">
+        <div class="villa-grid" v-if="landingLoading">
+          <div class="villa-card villa-card-skeleton" v-for="n in 6" :key="n">
+            <div class="villa-img skeleton-block"></div>
+            <div class="villa-info">
+              <div class="skeleton-line title"></div>
+              <div class="skeleton-line medium"></div>
+              <div class="skeleton-line footer"></div>
+            </div>
+          </div>
+        </div>
+        <div class="villa-grid" v-else>
           <div
             class="villa-card"
             v-for="(v, vi) in matchedVillas"
@@ -172,7 +207,7 @@
             <ul class="price-tier-includes">
               <li v-for="item in tier.includes" :key="item">{{ item }}</li>
             </ul>
-            <button class="btn-primary btn-sm" @click="openWechat()">了解这个档位</button>
+            <button class="btn-primary btn-sm" @click="openWechat('price_tier')">了解这个档位</button>
           </div>
         </div>
       </div>
@@ -197,7 +232,7 @@
             <div class="stat-item"><b>{{ stats.orderCount }}+</b><span>成功活动</span></div>
             <div class="stat-item"><b>{{ stats.reviewCount }}+</b><span>真实好评</span></div>
           </div>
-          <button class="btn-primary btn-lg" @click="openWechat()">微信咨询</button>
+          <button class="btn-primary btn-lg" @click="openWechat('contact_card')">微信咨询</button>
           <p class="contact-phone" v-if="siteConfig.landing_phone">
             或致电 <a :href="'tel:' + siteConfig.landing_phone">{{ siteConfig.landing_phone }}</a>
           </p>
@@ -228,12 +263,12 @@
 
     <!-- 浮动底部栏 -->
     <div class="floating-bar">
-      <div class="bar-left" @click="openWechat()">
+      <div class="bar-left" @click="openWechat('floating_consult')">
         <span class="bar-icon">💬</span>
         <span class="bar-text">咨询</span>
       </div>
       <button class="bar-main" @click="$router.push('/search')">立即预订</button>
-      <div class="bar-left" @click="openWechat()">
+      <div class="bar-left" @click="callPhone">
         <span class="bar-icon">📞</span>
         <span class="bar-text">电话</span>
       </div>
@@ -250,6 +285,7 @@
           <p>微信号：{{ siteConfig.landing_wechat_id || 'villa_service' }}</p>
           <p class="qr-tip">截图后微信扫一扫添加</p>
         </div>
+        <button class="wechat-copy" @click="copyWechat">复制微信号</button>
         <p class="wechat-phone" v-if="siteConfig.landing_phone">
           或致电 <a :href="'tel:' + siteConfig.landing_phone">{{ siteConfig.landing_phone }}</a>
         </p>
@@ -281,11 +317,34 @@ const siteConfig = reactive<Record<string, string>>({});
 const cases = ref<any[]>([]);
 const villas = ref<any[]>([]);
 const stats = reactive({ villaCount: 0, orderCount: 0, reviewCount: 0 });
+const landingLoading = ref(true);
 const activeScene = ref((route.query.scene as string) || 'all');
 const showWechat = ref(false);
-function openWechat() {
+function openWechat(source = 'landing') {
   showWechat.value = true;
-  trackEvent('wechat_click', { metadata: { page: 'landing' } });
+  trackEvent('wechat_click', { metadata: { page: 'landing', source, scene: activeScene.value } });
+}
+
+function copyWechat() {
+  const wechat = siteConfig.landing_wechat_id || 'villa_service';
+  if (navigator.clipboard?.writeText) {
+    navigator.clipboard.writeText(wechat).catch(() => {});
+  } else {
+    const ta = document.createElement('textarea');
+    ta.value = wechat;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+  }
+  trackEvent('wechat_copy', { metadata: { page: 'landing', scene: activeScene.value } });
+}
+
+function callPhone() {
+  trackEvent('phone_click', { metadata: { page: 'landing', source: 'floating_bar' } });
+  window.location.href = `tel:${siteConfig.landing_phone || '400-888-8888'}`;
 }
 const currentVideo = ref<any>(null);
 const villasRef = ref<HTMLElement>();
@@ -460,15 +519,19 @@ const xhsNotes = [
 ];
 
 onMounted(async () => {
-  const [cfgRes, landingRes] = await Promise.allSettled([getSiteConfig(), getLanding()]);
-  if (cfgRes.status === 'fulfilled') Object.assign(siteConfig, cfgRes.value as any);
-  if (landingRes.status === 'fulfilled') {
-    const d = landingRes.value as any;
-    cases.value = d.cases || [];
-    villas.value = d.villas || [];
-    if (d.stats) Object.assign(stats, d.stats);
+  try {
+    const [cfgRes, landingRes] = await Promise.allSettled([getSiteConfig(), getLanding()]);
+    if (cfgRes.status === 'fulfilled') Object.assign(siteConfig, cfgRes.value as any);
+    if (landingRes.status === 'fulfilled') {
+      const d = landingRes.value as any;
+      cases.value = d.cases || [];
+      villas.value = d.villas || [];
+      if (d.stats) Object.assign(stats, d.stats);
+    }
+    if (route.query.scene) activeScene.value = route.query.scene as string;
+  } finally {
+    landingLoading.value = false;
   }
-  if (route.query.scene) activeScene.value = route.query.scene as string;
 
   // Hero 轮播
   heroTimer = setInterval(() => {
@@ -557,6 +620,32 @@ h2 { font-size: 28px; font-weight: 800; text-align: center; margin-bottom: 32px;
 .hero-sub { font-size: 16px; opacity: 0.85; margin-bottom: 18px; letter-spacing: 2px; font-weight: 300; }
 .hero-trust { font-size: 13px; opacity: 0.7; margin-bottom: 28px; letter-spacing: 1px; }
 .hero-trust b { color: #ffd700; font-size: 16px; font-weight: 700; }
+.hero-value-row {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 24px;
+}
+.hero-value-item {
+  min-width: 96px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(255,255,255,0.14);
+  border: 1px solid rgba(255,255,255,0.24);
+  backdrop-filter: blur(8px);
+}
+.hero-value-item span {
+  display: block;
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1.1;
+}
+.hero-value-item small {
+  display: block;
+  margin-top: 4px;
+  font-size: 11px;
+  opacity: 0.78;
+}
 .scene-tabs { display: flex; justify-content: center; gap: 10px; margin-bottom: 36px; flex-wrap: wrap; }
 .scene-tab { padding: 8px 22px; border-radius: 20px; font-size: 14px; cursor: pointer; background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3); transition: all 0.3s; backdrop-filter: blur(4px); }
 .scene-tab:hover, .scene-tab.active { background: rgba(255,255,255,0.3); border-color: #fff; }
@@ -571,6 +660,58 @@ h2 { font-size: 28px; font-weight: 800; text-align: center; margin-bottom: 32px;
 .notify-bar { background: #fff9f5; padding: 10px 0; text-align: center; font-size: 13px; color: #94702c; border-bottom: 1px solid #fef0e0; overflow: hidden; height: 38px; }
 .notify-item { animation: notifySlide 0.4s ease; }
 @keyframes notifySlide { from { opacity: 0; transform: translateY(100%); } to { opacity: 1; transform: translateY(0); } }
+.skeleton-block,
+.skeleton-line,
+.skeleton-pill {
+  position: relative;
+  overflow: hidden;
+  background: #eef2f7;
+}
+.skeleton-block::after,
+.skeleton-line::after,
+.skeleton-pill::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.7), transparent);
+  animation: skeleton-shimmer 1.3s infinite;
+}
+.skeleton-line {
+  height: 12px;
+  border-radius: 999px;
+}
+.skeleton-line.title {
+  width: 76%;
+  height: 16px;
+  margin-bottom: 12px;
+}
+.skeleton-line.medium {
+  width: 92%;
+  margin-bottom: 12px;
+}
+.skeleton-line.short {
+  width: 52%;
+}
+.skeleton-line.footer {
+  width: 100%;
+  height: 24px;
+  margin-top: 16px;
+}
+.skeleton-pill {
+  width: 84px;
+  height: 24px;
+  border-radius: 12px;
+  margin-bottom: 12px;
+}
+.case-card-skeleton,
+.villa-card-skeleton {
+  pointer-events: none;
+  cursor: default;
+}
+@keyframes skeleton-shimmer {
+  100% { transform: translateX(100%); }
+}
 
 /* ===== 案例 ===== */
 .cases-section { padding: 64px 0; background: linear-gradient(rgba(250,249,247,0.92), rgba(250,249,247,0.92)), url('/images/bg-pool.jpg') center/cover; }
@@ -722,6 +863,17 @@ h2 { font-size: 28px; font-weight: 800; text-align: center; margin-bottom: 32px;
 .qr-placeholder { padding: 24px; background: #f8f6f3; border-radius: 12px; }
 .qr-placeholder p { margin: 4px 0; }
 .qr-tip { font-size: 12px; color: #94a3b8; }
+.wechat-copy {
+  margin-top: 14px;
+  border: none;
+  border-radius: 22px;
+  padding: 10px 28px;
+  color: #fff;
+  background: linear-gradient(135deg, #ff6b35, #ff4500);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
 .wechat-phone { margin-top: 12px; font-size: 13px; color: #64748b; }
 .wechat-phone a { color: #ff6b35; }
 .video-wrap { position: relative; max-width: 90vw; max-height: 80vh; }
@@ -730,13 +882,44 @@ h2 { font-size: 28px; font-weight: 800; text-align: center; margin-bottom: 32px;
 
 /* ===== 移动端 ===== */
 @media (max-width: 768px) {
+  .hero-section {
+    min-height: calc(100svh - 38px);
+    align-items: flex-start;
+    padding-top: 88px;
+  }
+  .hero-body {
+    width: 100%;
+    padding: 0 18px;
+  }
   .hero-body h1 { font-size: 24px; letter-spacing: 2px; }
-  .hero-sub { font-size: 13px; }
-  .hero-trust { font-size: 11px; }
+  .hero-sub { font-size: 13px; margin-bottom: 14px; }
+  .hero-trust { font-size: 11px; margin-bottom: 14px; }
+  .hero-value-row {
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+  .hero-value-item {
+    min-width: 0;
+    flex: 1;
+    padding: 9px 8px;
+    border-radius: 12px;
+  }
+  .hero-value-item span {
+    font-size: 16px;
+  }
+  .hero-value-item small {
+    font-size: 10px;
+  }
   .scene-tabs { gap: 6px; }
   .scene-tab { padding: 6px 14px; font-size: 12px; }
-  .hero-cta { flex-direction: column; align-items: center; gap: 10px; }
-  .hero-cta .btn-primary, .hero-cta .btn-ghost { width: 80%; }
+  .hero-cta { flex-direction: column; align-items: stretch; gap: 10px; }
+  .hero-cta .btn-primary, .hero-cta .btn-ghost {
+    width: 100%;
+    padding: 13px 16px;
+  }
+  .scroll-hint {
+    bottom: 18px;
+  }
 
   h2 { font-size: 22px; margin-bottom: 24px; }
 

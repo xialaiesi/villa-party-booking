@@ -8,6 +8,7 @@ import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../../prisma/prisma.service';
 import { MerchantService } from '../merchant/merchant.service';
 import { AdminMessageService } from '../message/admin-message.service';
+import { MembershipService } from '../membership/membership.service';
 import type { AdminContext } from '../../common/types/admin-context';
 import * as crypto from 'crypto';
 
@@ -20,6 +21,7 @@ export class AdminService {
     private jwtService: JwtService,
     private merchantService: MerchantService,
     private adminMessage: AdminMessageService,
+    private membership: MembershipService,
   ) {}
 
   // ==================== 认证 ====================
@@ -213,6 +215,73 @@ export class AdminService {
     return { success: true };
   }
 
+  // ==================== 售卖时段档 ====================
+
+  async getVillaSlots(ctx: AdminContext, villaId: number) {
+    await this.ensureVillaAccess(ctx, villaId);
+    const slots = await this.prisma.villaTimeSlot.findMany({
+      where: { villaId },
+      orderBy: { sortOrder: 'asc' },
+    });
+    return slots.map((s) => ({
+      id: Number(s.id),
+      type: s.type,
+      name: s.name,
+      startMinute: s.startMinute,
+      endMinute: s.endMinute,
+      price: Number(s.price),
+      weekendPrice: s.weekendPrice != null ? Number(s.weekendPrice) : null,
+      status: s.status,
+      sortOrder: s.sortOrder,
+    }));
+  }
+
+  /** 整体替换某别墅的时段档配置 */
+  async setVillaSlots(
+    ctx: AdminContext,
+    villaId: number,
+    slots: {
+      type?: string;
+      name: string;
+      startMinute: number;
+      endMinute: number;
+      price: number;
+      weekendPrice?: number | null;
+      status?: number;
+      sortOrder?: number;
+    }[],
+  ) {
+    await this.ensureVillaAccess(ctx, villaId);
+
+    for (const s of slots) {
+      if (
+        s.startMinute < 0 ||
+        s.endMinute > 1440 ||
+        s.startMinute >= s.endMinute
+      ) {
+        throw new BadRequestException(`时段「${s.name}」时间范围不合法`);
+      }
+    }
+
+    await this.prisma.villaTimeSlot.deleteMany({ where: { villaId } });
+    if (slots.length) {
+      await this.prisma.villaTimeSlot.createMany({
+        data: slots.map((s, i) => ({
+          villaId,
+          type: s.type || 'half_day',
+          name: s.name,
+          startMinute: s.startMinute,
+          endMinute: s.endMinute,
+          price: s.price,
+          weekendPrice: s.weekendPrice ?? null,
+          status: s.status ?? 1,
+          sortOrder: s.sortOrder ?? i,
+        })),
+      });
+    }
+    return { success: true };
+  }
+
   private async ensureVillaAccess(ctx: AdminContext, villaId: number) {
     if (ctx.role === 'platform') return;
     const villa = await this.prisma.villa.findUnique({ where: { id: villaId } });
@@ -251,15 +320,17 @@ export class AdminService {
     const order = await this.ensureOrderAccess(ctx, id);
     if (order.status !== 1) throw new BadRequestException('仅已付定金的订单可确认');
 
-    // 锁定日历
-    for (let i = 0; i < order.days; i++) {
-      const d = new Date(order.checkIn);
-      d.setDate(d.getDate() + i);
-      await this.prisma.villaCalendar.upsert({
-        where: { villaId_date: { villaId: order.villaId, date: d } },
-        create: { villaId: order.villaId, date: d, price: 0, status: 2 },
-        update: { status: 2 },
-      });
+    // 锁定日历（仅整天档；时段档不整天锁，时段占用以订单为准）
+    if (order.slotId == null) {
+      for (let i = 0; i < order.days; i++) {
+        const d = new Date(order.checkIn);
+        d.setDate(d.getDate() + i);
+        await this.prisma.villaCalendar.upsert({
+          where: { villaId_date: { villaId: order.villaId, date: d } },
+          create: { villaId: order.villaId, date: d, price: 0, status: 2 },
+          update: { status: 2 },
+        });
+      }
     }
 
     const updated = await this.prisma.order.update({
@@ -315,10 +386,19 @@ export class AdminService {
   async markCompleted(ctx: AdminContext, id: number) {
     const order = await this.ensureOrderAccess(ctx, id);
     if (order.status !== 4) throw new BadRequestException('仅已入住的订单可完成');
-    return this.prisma.order.update({
+    const updated = await this.prisma.order.update({
       where: { id },
       data: { status: 5 },
     });
+    // 订单完成发放成长值（1 元 = 1 成长值）
+    await this.membership.addGrowth(
+      Number(order.userId),
+      Math.round(Number(order.totalAmount)),
+      'order',
+      `订单 ${order.orderNo} 完成`,
+      Number(order.id),
+    );
+    return updated;
   }
 
   private async ensureOrderAccess(ctx: AdminContext, id: number) {

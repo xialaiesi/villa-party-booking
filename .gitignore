@@ -40,3 +40,8 @@ web/dist/
 # Uploaded files
 server/uploads/
 .vite
+
+# Skill 生成产物（图片/视频，勿入库）
+/cb/
+/fk/
+/video/

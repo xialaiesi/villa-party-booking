@@ -25,6 +25,18 @@
       "style": { "navigationBarTitleText": "订单详情" }
     },
     {
+      "path": "pages/chat/index",
+      "style": { "navigationBarTitleText": "联系管家" }
+    },
+    {
+      "path": "pages/member/index",
+      "style": { "navigationBarTitleText": "会员中心" }
+    },
+    {
+      "path": "pages/checkin/index",
+      "style": { "navigationBarTitleText": "入住登记" }
+    },
+    {
       "path": "pages/mine/index",
       "style": { "navigationBarTitleText": "我的" }
     },
@@ -127,6 +139,14 @@
     {
       "path": "pages/merchant/order-detail/index",
       "style": { "navigationBarTitleText": "订单详情" }
+    },
+    {
+      "path": "pages/merchant/chat/index",
+      "style": { "navigationBarTitleText": "客户咨询" }
+    },
+    {
+      "path": "pages/merchant/chat/detail",
+      "style": { "navigationBarTitleText": "会话" }
     },
     {
       "path": "pages/merchant/package/index",

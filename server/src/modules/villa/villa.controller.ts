@@ -61,6 +61,18 @@ export class VillaController {
   }
 
   @Public()
+  @Get(':id/slots')
+  async slots(
+    @Param('id', ParseIntPipe) id: number,
+    @Query('date') date: string,
+  ) {
+    return this.villaService.getSlotAvailability(
+      id,
+      date || new Date().toISOString().split('T')[0],
+    );
+  }
+
+  @Public()
   @Get(':id/reviews')
   async reviews(
     @Param('id', ParseIntPipe) id: number,

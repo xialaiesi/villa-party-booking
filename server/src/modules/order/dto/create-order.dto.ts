@@ -22,6 +22,11 @@ export class CreateOrderDto {
   @IsString()
   checkOut: string;
 
+  // 时段档 ID；不传则视为整天（兼容存量）
+  @IsOptional()
+  @IsInt()
+  slotId?: number;
+
   @IsInt()
   @Min(1)
   guests: number;

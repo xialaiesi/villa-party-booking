@@ -41,6 +41,18 @@
       </view>
     </view>
 
+    <!-- 会员卡入口 -->
+    <view class="member-entry" v-if="userStore.isLoggedIn" @tap="goMember">
+      <view class="member-left">
+        <text class="member-icon">{{ member.icon || '🥉' }}</text>
+        <view class="member-text">
+          <text class="member-name">{{ member.levelName || '普通会员' }}</text>
+          <text class="member-growth">成长值 {{ member.growth || 0 }}</text>
+        </view>
+      </view>
+      <text class="member-go">查看权益 ›</text>
+    </view>
+
     <!-- 我的服务 -->
     <view class="section">
       <text class="section-title">我的服务</text>
@@ -96,11 +108,13 @@ import { useUserStore } from '../../store/user';
 import { useMerchantStore } from '../../store/merchant';
 import { getMineStats } from '../../api/home';
 import { getUnreadCount } from '../../api/message';
+import { getMembership } from '../../api/membership';
 
 const userStore = useUserStore();
 const merchantStore = useMerchantStore();
 const stats = ref({ orderTotal: 0, pendingPay: 0, ongoing: 0, completed: 0, albumCount: 0, postCount: 0 });
 const unreadCount = ref(0);
+const member = ref<any>({});
 
 const menuItems = [
   { name: '我的相册', icon: '📸', url: '/pages/album/index' },
@@ -117,6 +131,7 @@ onShow(async () => {
       stats.value = await getMineStats();
       const res = await getUnreadCount();
       unreadCount.value = res.count || 0;
+      member.value = await getMembership();
     } catch (e) { console.error(e); }
   }
 });
@@ -159,6 +174,10 @@ function goPage(url: string) {
 
 function goMessages() {
   uni.navigateTo({ url: '/pages/message/index' });
+}
+
+function goMember() {
+  uni.navigateTo({ url: '/pages/member/index' });
 }
 
 function goContact() {
@@ -218,6 +237,17 @@ function goMerchant() {
 }
 .stat-num { font-size: 40rpx; font-weight: bold; color: #333; }
 .stat-label { font-size: 22rpx; color: #999; margin-top: 6rpx; }
+
+.member-entry {
+  margin: 20rpx; padding: 28rpx 30rpx; border-radius: 16rpx;
+  background: linear-gradient(135deg, #2a2a38, #44445a);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.member-left { display: flex; align-items: center; }
+.member-icon { font-size: 48rpx; margin-right: 20rpx; }
+.member-name { font-size: 30rpx; font-weight: bold; color: #ffd9a0; display: block; }
+.member-growth { font-size: 22rpx; color: rgba(255,255,255,0.7); display: block; margin-top: 6rpx; }
+.member-go { font-size: 24rpx; color: #ffd9a0; }
 
 .section { margin: 30rpx 20rpx; }
 .section-title { font-size: 28rpx; color: #333; font-weight: bold; display: block; margin-bottom: 20rpx; }

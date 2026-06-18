@@ -77,6 +77,43 @@
       <button class="submit-btn" :loading="saving" @tap="handleSubmit">
         {{ isEdit ? '保存修改' : '创建别墅' }}
       </button>
+
+      <!-- 售卖时段（钟点/半日租）-->
+      <view class="slot-section" v-if="isEdit">
+        <view class="slot-header">
+          <text class="section-title">售卖时段（钟点 / 半日租）</text>
+          <text class="add-slot" @tap="addSlot">+ 添加时段</text>
+        </view>
+        <text class="slot-hint">不配置则仅支持整天预订。整天与任意时段同日互斥，时段之间时间不重叠才可同日各接一场。</text>
+        <view class="slot-card" v-for="(s, i) in slots" :key="i">
+          <view class="form-group">
+            <text class="label">时段名称</text>
+            <input class="input" v-model="s.name" placeholder="如：下午场" />
+          </view>
+          <view class="form-group row">
+            <view class="half">
+              <text class="label">开始时间</text>
+              <input class="input" v-model="s.startTime" placeholder="12:00" />
+            </view>
+            <view class="half">
+              <text class="label">结束时间</text>
+              <input class="input" v-model="s.endTime" placeholder="18:00" />
+            </view>
+          </view>
+          <view class="form-group row">
+            <view class="half">
+              <text class="label">价格</text>
+              <input class="input" type="digit" v-model="s.price" placeholder="价格" />
+            </view>
+            <view class="half">
+              <text class="label">周末价(选填)</text>
+              <input class="input" type="digit" v-model="s.weekendPrice" placeholder="周末价" />
+            </view>
+          </view>
+          <text class="remove-slot" @tap="removeSlot(i)">删除该时段</text>
+        </view>
+        <button class="slot-save-btn" :loading="savingSlots" @tap="saveSlots">保存时段配置</button>
+      </view>
     </view>
   </view>
 </template>
@@ -84,13 +121,32 @@
 <script setup lang="ts">
 import { ref, reactive } from 'vue';
 import { onLoad } from '@dcloudio/uni-app';
-import { createVilla, updateVilla, getAdminVillas } from '../../../api/admin';
+import {
+  createVilla,
+  updateVilla,
+  getAdminVillas,
+  getAdminVillaSlots,
+  setAdminVillaSlots,
+} from '../../../api/admin';
 import { resolveImageUrl, BASE_URL } from '../../../utils/request';
 
 const resolveImg = resolveImageUrl;
 const isEdit = ref(false);
 const editId = ref(0);
 const saving = ref(false);
+const savingSlots = ref(false);
+const slots = ref<any[]>([]);
+
+function minToTime(min: number) {
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+}
+function timeToMin(t: string): number {
+  const [h, m] = (t || '').split(':').map((x) => parseInt(x));
+  if (isNaN(h)) return NaN;
+  return h * 60 + (m || 0);
+}
 
 const form = reactive({
   name: '',
@@ -131,8 +187,64 @@ onLoad(async (opts: any) => {
         });
       }
     } catch (e) { console.error(e); }
+    await loadSlots();
   }
 });
+
+async function loadSlots() {
+  try {
+    const list = await getAdminVillaSlots(editId.value);
+    slots.value = (list || []).map((s: any) => ({
+      type: s.type,
+      name: s.name,
+      startTime: minToTime(s.startMinute),
+      endTime: minToTime(s.endMinute),
+      price: String(s.price ?? ''),
+      weekendPrice: s.weekendPrice != null ? String(s.weekendPrice) : '',
+    }));
+  } catch (e) { console.error(e); }
+}
+
+function addSlot() {
+  slots.value.push({ type: 'half_day', name: '', startTime: '', endTime: '', price: '', weekendPrice: '' });
+}
+function removeSlot(i: number) {
+  slots.value.splice(i, 1);
+}
+
+async function saveSlots() {
+  const payload: any[] = [];
+  for (const s of slots.value) {
+    const start = timeToMin(s.startTime);
+    const end = timeToMin(s.endTime);
+    if (!s.name) {
+      uni.showToast({ title: '请填写时段名称', icon: 'none' });
+      return;
+    }
+    if (isNaN(start) || isNaN(end) || start >= end) {
+      uni.showToast({ title: `「${s.name}」时间范围不合法`, icon: 'none' });
+      return;
+    }
+    if (!s.price) {
+      uni.showToast({ title: `「${s.name}」请填写价格`, icon: 'none' });
+      return;
+    }
+    payload.push({
+      type: end - start >= 600 ? 'half_day' : 'hourly',
+      name: s.name,
+      startMinute: start,
+      endMinute: end,
+      price: Number(s.price),
+      weekendPrice: s.weekendPrice ? Number(s.weekendPrice) : null,
+    });
+  }
+  savingSlots.value = true;
+  try {
+    await setAdminVillaSlots(editId.value, payload);
+    uni.showToast({ title: '时段已保存', icon: 'success' });
+  } catch (e) { console.error(e); }
+  finally { savingSlots.value = false; }
+}
 
 function uploadFile(filePath: string): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -257,4 +369,18 @@ async function handleSubmit() {
   margin-top: 40rpx;
 }
 .submit-btn::after { border: none; }
+
+.slot-section { margin-top: 48rpx; }
+.slot-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12rpx; }
+.section-title { font-size: 30rpx; font-weight: bold; color: #333; }
+.add-slot { font-size: 26rpx; color: #409EFF; }
+.slot-hint { font-size: 22rpx; color: #999; display: block; margin-bottom: 20rpx; line-height: 1.5; }
+.slot-card { background: #fff; border-radius: 12rpx; padding: 24rpx; margin-bottom: 20rpx; }
+.remove-slot { font-size: 24rpx; color: #F56C6C; }
+.slot-save-btn {
+  width: 100%; height: 80rpx; line-height: 80rpx;
+  background: #fff; color: #409EFF; font-size: 28rpx;
+  border: 2rpx solid #409EFF; border-radius: 40rpx; margin-top: 8rpx;
+}
+.slot-save-btn::after { border: none; }
 </style>

@@ -24,7 +24,8 @@
     <view class="card">
       <text class="card-title">别墅信息</text>
       <text class="villa-name">{{ order.villa?.name }}</text>
-      <text class="date-info">{{ order.checkIn }} ~ {{ order.checkOut }}（{{ order.days }}晚）</text>
+      <text class="date-info" v-if="order.slotName">{{ order.checkIn }} · {{ order.slotName }}</text>
+      <text class="date-info" v-else>{{ order.checkIn }} ~ {{ order.checkOut }}（{{ order.days }}晚）</text>
       <text class="guest-info">入住{{ order.guests }}人</text>
     </view>
 
@@ -89,9 +90,15 @@ const actionItems = computed(() => {
     items.push({ key: 'tasks', icon: '📋', label: '入住任务清单', desc: '准备好出行物品和活动方案' });
     items.push({ key: 'share', icon: '💰', label: '发起费用分摊', desc: '邀请朋友一起分摊费用' });
   }
+  if (s >= 1 && s <= 3) {
+    const signed = !!order.value.pactSignedAt;
+    items.push({ key: 'checkin', icon: signed ? '✅' : '📝', label: '入住登记 · 派对公约', desc: signed ? '已完成登记，可查看' : '登记带队人并签署公约' });
+  }
   if (s === 2 || s === 3) {
     items.push({ key: 'service', icon: '🍳', label: '预约周边服务', desc: '厨师/摄影/DJ 一键预约' });
-    items.push({ key: 'contact', icon: '📞', label: '联系管家', desc: '入住期间随时联系' });
+  }
+  if (s >= 1 && s <= 4) {
+    items.push({ key: 'contact', icon: '💬', label: '联系管家', desc: '在线咨询，随时响应' });
   }
   if (s === 4) {
     items.push({ key: 'wait', icon: '⏳', label: '押金验收中', desc: '商家验收后押金将退还' });
@@ -160,7 +167,8 @@ function handleAction(key: string) {
     case 'tasks': uni.navigateTo({ url: `/pages/checklist/index?id=${orderId}` }); break;
     case 'share': uni.showToast({ title: '发起分摊中...', icon: 'none' }); break;
     case 'service': uni.navigateTo({ url: '/pages/service/index' }); break;
-    case 'contact': uni.makePhoneCall({ phoneNumber: '10086' }); break;
+    case 'contact': uni.navigateTo({ url: `/pages/chat/index?orderId=${orderId}` }); break;
+    case 'checkin': uni.navigateTo({ url: `/pages/checkin/index?id=${orderId}` }); break;
     case 'album': uni.navigateTo({ url: '/pages/album/index' }); break;
     case 'post': uni.switchTab({ url: '/pages/community/index' }); break;
   }

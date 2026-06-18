@@ -176,10 +176,29 @@ function handleCommand(cmd: string) {
 
 /* 移动端 */
 @media (max-width: 768px) {
-  .header-inner { height: 52px; padding: 0 12px; }
+  .header-inner {
+    height: auto;
+    min-height: 52px;
+    padding: 8px 12px 10px;
+    flex-wrap: wrap;
+    gap: 8px 10px;
+  }
   .logo-text { font-size: 18px; letter-spacing: 1px; }
-  .nav { gap: 2px; }
-  .nav a { font-size: 12px; padding: 5px 10px; }
+  .nav {
+    order: 3;
+    width: 100%;
+    gap: 6px;
+    overflow-x: auto;
+    padding-bottom: 2px;
+    scrollbar-width: none;
+  }
+  .nav::-webkit-scrollbar { display: none; }
+  .nav a {
+    flex-shrink: 0;
+    font-size: 12px;
+    padding: 6px 12px;
+    background: #f8fafc;
+  }
   .login-btn { padding: 5px 14px; font-size: 12px; }
   .user-avatar { width: 26px; height: 26px; font-size: 11px; }
   .user-info { font-size: 12px; gap: 4px; }

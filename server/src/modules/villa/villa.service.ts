@@ -118,6 +118,10 @@ export class VillaService {
         images: { orderBy: { sortOrder: 'asc' } },
         facilities: { include: { facility: true } },
         merchant: { select: { id: true, name: true, logo: true } },
+        timeSlots: {
+          where: { status: 1 },
+          orderBy: { sortOrder: 'asc' },
+        },
       },
     });
     if (!villa) throw new NotFoundException('别墅不存在');
@@ -243,6 +247,71 @@ export class VillaService {
         url: img.url,
         caption: img.caption,
       })),
+      timeSlots: villa.timeSlots?.map((s: any) => ({
+        id: Number(s.id),
+        type: s.type,
+        name: s.name,
+        startMinute: s.startMinute,
+        endMinute: s.endMinute,
+        price: Number(s.price),
+        weekendPrice: s.weekendPrice != null ? Number(s.weekendPrice) : null,
+      })),
     };
+  }
+
+  /**
+   * 查询某别墅某天各时段是否可订。
+   * 占用以 Redis 锁（待支付保留）+ 已确认订单（日历锁定）为准。
+   */
+  async getSlotAvailability(villaId: number, date: string) {
+    const slots = await this.prisma.villaTimeSlot.findMany({
+      where: { villaId, status: 1 },
+      orderBy: { sortOrder: 'asc' },
+    });
+    if (!slots.length) return [];
+
+    const day = new Date(date);
+    const nextDay = new Date(date);
+    nextDay.setDate(nextDay.getDate() + 1);
+
+    // 当天未取消/未拒绝/未关闭的订单（含整天与各时段）
+    const activeOrders = await this.prisma.order.findMany({
+      where: {
+        villaId,
+        checkIn: { lte: day },
+        checkOut: { gte: day },
+        status: { notIn: [6, 7, 8] },
+      },
+      select: { slotStart: true, slotEnd: true },
+    });
+
+    const overlaps = (
+      a: { start: number; end: number },
+      b: { start: number; end: number },
+    ) => a.start < b.end && b.start < a.end;
+
+    const busyWindows = activeOrders.map((o) => ({
+      start: o.slotStart ?? 0,
+      end: o.slotEnd ?? 1440,
+    }));
+
+    return slots.map((s) => {
+      const win = { start: s.startMinute, end: s.endMinute };
+      const dayOfWeek = day.getDay();
+      const isWeekend = dayOfWeek === 0 || dayOfWeek === 5 || dayOfWeek === 6;
+      const available = !busyWindows.some((b) => overlaps(win, b));
+      return {
+        id: Number(s.id),
+        type: s.type,
+        name: s.name,
+        startMinute: s.startMinute,
+        endMinute: s.endMinute,
+        price:
+          isWeekend && s.weekendPrice != null
+            ? Number(s.weekendPrice)
+            : Number(s.price),
+        available,
+      };
+    });
   }
 }

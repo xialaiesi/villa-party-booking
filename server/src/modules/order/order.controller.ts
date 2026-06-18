@@ -9,6 +9,7 @@ import {
 } from '@nestjs/common';
 import { OrderService } from './order.service';
 import { CreateOrderDto } from './dto/create-order.dto';
+import { SignPactDto } from './dto/sign-pact.dto';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Public } from '../../common/decorators/public.decorator';
 import { ORDER_STATUS_MAP } from '../../common/constants/order-status';
@@ -71,6 +72,16 @@ export class OrderController {
     @CurrentUser('sub') userId: number,
   ) {
     return this.orderService.mockPayFinal(id, userId);
+  }
+
+  /** 入住登记 + 签署派对公约 */
+  @Post(':id/sign-pact')
+  async signPact(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser('sub') userId: number,
+    @Body() dto: SignPactDto,
+  ) {
+    return this.orderService.signPact(id, userId, dto);
   }
 
   @Post(':id/cancel')

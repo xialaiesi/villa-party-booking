@@ -79,4 +79,21 @@ export class AdminVillaController {
   ) {
     return this.adminService.setCalendar(ctx, id, dates);
   }
+
+  @Get(':id/slots')
+  async getSlots(
+    @AdminCtx() ctx: AdminContext,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    return this.adminService.getVillaSlots(ctx, id);
+  }
+
+  @Put(':id/slots')
+  async setSlots(
+    @AdminCtx() ctx: AdminContext,
+    @Param('id', ParseIntPipe) id: number,
+    @Body('slots') slots: any[],
+  ) {
+    return this.adminService.setVillaSlots(ctx, id, slots || []);
+  }
 }

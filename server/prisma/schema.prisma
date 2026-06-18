@@ -95,6 +95,7 @@ model Villa {
   images     VillaImage[]
   facilities VillaFacility[]
   calendars  VillaCalendar[]
+  timeSlots  VillaTimeSlot[]
   orders     Order[]
   reviews        Review[]
   groupBuys      GroupBuy[]
@@ -156,6 +157,65 @@ model VillaCalendar {
   @@map("villa_calendar")
 }
 
+// 售卖时段档：整天 / 半日 / 钟点。startMinute/endMinute 为从 0 点起的分钟数，整天为 [0,1440)
+model VillaTimeSlot {
+  id           BigInt   @id @default(autoincrement())
+  villaId      BigInt   @map("villa_id")
+  type         String   @default("full_day") @db.VarChar(20) // full_day/half_day/hourly
+  name         String   @db.VarChar(50)  // 显示名，如 "整天"、"下午场 12:00-18:00"
+  startMinute  Int      @map("start_minute") // 0
+  endMinute    Int      @map("end_minute")   // 1440
+  price        Decimal  @db.Decimal(10, 2)
+  weekendPrice Decimal? @map("weekend_price") @db.Decimal(10, 2)
+  status       Int      @default(1) @db.TinyInt
+  sortOrder    Int      @default(0) @map("sort_order")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  villa  Villa   @relation(fields: [villaId], references: [id], onDelete: Cascade)
+  orders Order[]
+
+  @@index([villaId])
+  @@map("villa_time_slot")
+}
+
+// ==================== 实时管家会话 ====================
+
+model ServiceChat {
+  id             BigInt    @id @default(autoincrement())
+  orderId        BigInt    @unique @map("order_id")
+  merchantId     BigInt    @map("merchant_id")
+  userId         BigInt    @map("user_id")
+  lastMessage    String?   @map("last_message") @db.VarChar(200)
+  lastMessageAt  DateTime? @map("last_message_at")
+  userUnread     Int       @default(0) @map("user_unread")
+  merchantUnread Int       @default(0) @map("merchant_unread")
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  order    Order                @relation(fields: [orderId], references: [id])
+  user     User                 @relation(fields: [userId], references: [id])
+  messages ServiceChatMessage[]
+
+  @@index([merchantId])
+  @@index([userId])
+  @@map("service_chat")
+}
+
+model ServiceChatMessage {
+  id         BigInt    @id @default(autoincrement())
+  chatId     BigInt    @map("chat_id")
+  senderType String    @map("sender_type") @db.VarChar(10) // user/merchant
+  senderId   BigInt    @map("sender_id")
+  type       String    @default("text") @db.VarChar(10) // text/image
+  content    String    @db.Text
+  readAt     DateTime? @map("read_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  chat ServiceChat @relation(fields: [chatId], references: [id], onDelete: Cascade)
+
+  @@index([chatId])
+  @@map("service_chat_message")
+}
+
 // ==================== 套餐相关 ====================
 
 model Package {
@@ -188,6 +248,11 @@ model User {
   avatar    String?  @db.VarChar(500)
   phone     String?  @unique @db.VarChar(20)
   password  String?  @db.VarChar(255) // PC端登录密码
+  // 会员体系
+  growth       Int       @default(0)  // 成长值（GrowthLog 累计缓存）
+  level        Int       @default(1)  // 1普通 2银卡 3金卡 4黑卡
+  birthday     DateTime? @db.Date      // 生日（生日权益用）
+  lastRemindAt DateTime? @map("last_remind_at") // 上次复购提醒时间（去重）
   createdAt DateTime @default(now()) @map("created_at")
 
   orders         Order[]
@@ -206,8 +271,25 @@ model User {
   chatSessions   ChatSession[]
   xhsNotes       XhsNote[]
   xhsNoteComments XhsNoteComment[]
+  serviceChats   ServiceChat[]
+  growthLogs     GrowthLog[]
 
   @@map("user")
+}
+
+model GrowthLog {
+  id          BigInt   @id @default(autoincrement())
+  userId      BigInt   @map("user_id")
+  points      Int // 本次加分（可为负）
+  source      String   @db.VarChar(30) // order/review/signup
+  refId       BigInt?  @map("ref_id") // 来源订单/评价 id
+  description String   @db.VarChar(200)
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@map("growth_log")
 }
 
 // ==================== 订单相关 ====================
@@ -221,6 +303,11 @@ model Order {
   checkIn        DateTime  @map("check_in") @db.Date
   checkOut       DateTime  @map("check_out") @db.Date
   days           Int
+  // 时段档：null 表示整天（兼容存量）
+  slotId         BigInt?   @map("slot_id")
+  slotName       String?   @map("slot_name") @db.VarChar(50)
+  slotStart      Int?      @map("slot_start") // 分钟
+  slotEnd        Int?      @map("slot_end")
   guests         Int
   villaAmount    Decimal   @map("villa_amount") @db.Decimal(10, 2)
   packageAmount  Decimal   @default(0) @map("package_amount") @db.Decimal(10, 2)
@@ -232,6 +319,12 @@ model Order {
   status         Int       @default(0) @db.TinyInt
   contactName    String?   @map("contact_name") @db.VarChar(50)
   contactPhone   String?   @map("contact_phone") @db.VarChar(20)
+  // 入住人登记 + 派对公约
+  leaderName     String?   @map("leader_name") @db.VarChar(50)   // 带队人姓名
+  leaderPhone    String?   @map("leader_phone") @db.VarChar(20)  // 带队人手机
+  leaderIdTail   String?   @map("leader_id_tail") @db.VarChar(8) // 身份证后四位
+  partySize      Int?      @map("party_size")                    // 实际到场人数
+  pactSignedAt   DateTime? @map("pact_signed_at")                // 派对公约签署时间
   remark         String?   @db.Text
   cancelReason   String?   @map("cancel_reason") @db.VarChar(255)
   createdAt      DateTime  @default(now()) @map("created_at")
@@ -241,6 +334,7 @@ model Order {
   merchant      Merchant       @relation(fields: [merchantId], references: [id])
   user          User           @relation(fields: [userId], references: [id])
   villa         Villa          @relation(fields: [villaId], references: [id])
+  slot          VillaTimeSlot? @relation(fields: [slotId], references: [id])
   orderPackages OrderPackage[]
   payments      Payment[]
   reviews       Review[]
@@ -250,6 +344,7 @@ model Order {
   serviceOrders  ServiceOrder[]
   corporateOrder CorporateOrder?
   settlement     Settlement?
+  serviceChat    ServiceChat?
 
   @@index([merchantId])
   @@map("order")

@@ -1,5 +1,23 @@
 <template>
   <view class="page">
+    <!-- 档期选择（别墅配置了时段时显示） -->
+    <view class="card" v-if="slotOptions.length">
+      <text class="card-title">选择档期</text>
+      <view class="slot-list">
+        <view
+          v-for="opt in slotOptions"
+          :key="opt.id"
+          class="slot-chip"
+          :class="{ active: selectedSlotId === opt.id }"
+          @tap="selectSlot(opt.id)"
+        >
+          <text class="slot-name">{{ opt.name }}</text>
+          <text class="slot-time" v-if="opt.id !== 0">{{ fmtTime(opt.startMinute) }}-{{ fmtTime(opt.endMinute) }}</text>
+          <text class="slot-time" v-else>按天整租</text>
+        </view>
+      </view>
+    </view>
+
     <!-- 日历选日期 -->
     <view class="card">
       <view class="card-header">
@@ -13,11 +31,17 @@
 
       <!-- 选择提示 -->
       <view class="tip-bar">
-        <text v-if="!checkIn">请选择入住日期</text>
-        <text v-else-if="!checkOut">请选择退房日期</text>
-        <text v-else class="selected-tip">
-          {{ checkIn }} 至 {{ checkOut }}（{{ days }}晚）
-        </text>
+        <template v-if="isSlotMode">
+          <text v-if="!checkIn">请选择日期</text>
+          <text v-else class="selected-tip">{{ checkIn }} · {{ selectedSlotName }}</text>
+        </template>
+        <template v-else>
+          <text v-if="!checkIn">请选择入住日期</text>
+          <text v-else-if="!checkOut">请选择退房日期</text>
+          <text v-else class="selected-tip">
+            {{ checkIn }} 至 {{ checkOut }}（{{ days }}晚）
+          </text>
+        </template>
       </view>
 
       <!-- 星期表头 -->
@@ -85,10 +109,11 @@
     </view>
 
     <!-- 费用明细 -->
-    <view class="card summary" v-if="checkIn && checkOut">
+    <view class="card summary" v-if="hasSelection">
       <text class="card-title">费用明细</text>
       <view class="fee-item">
-        <text>别墅费用（{{ days }}晚）</text>
+        <text v-if="isSlotMode">场地费用（{{ selectedSlotName }}）</text>
+        <text v-else>别墅费用（{{ days }}晚）</text>
         <text>¥{{ villaAmount }}</text>
       </view>
       <view class="fee-item" v-if="discountRate < 1">
@@ -106,7 +131,7 @@
     </view>
 
     <view class="bottom-bar">
-      <view class="price-summary" v-if="checkIn && checkOut">
+      <view class="price-summary" v-if="hasSelection">
         <text class="total-label">实付</text>
         <text class="total-price">¥{{ totalAmount + deposit }}</text>
       </view>
@@ -121,7 +146,7 @@
 import { ref, computed } from 'vue';
 import { onLoad } from '@dcloudio/uni-app';
 import { createOrder } from '../../api/order';
-import { getVilla, getVillaCalendar } from '../../api/villa';
+import { getVilla, getVillaCalendar, getVillaSlots } from '../../api/villa';
 import { useUserStore } from '../../store/user';
 
 const userStore = useUserStore();
@@ -139,6 +164,32 @@ const guests = ref('');
 const contactName = ref('');
 const contactPhone = ref('');
 const remark = ref('');
+
+// 档期：0 = 整天，其余为时段 ID
+const selectedSlotId = ref(0);
+// 选中日期的时段可订与价格（从 /slots 拉取）
+const slotInfoForDate = ref<any[]>([]);
+
+// 档期选项：整天 + 别墅配置的时段
+const slotOptions = computed(() => {
+  const slots = villa.value?.timeSlots || [];
+  if (!slots.length) return [];
+  return [{ id: 0, name: '整天' }, ...slots];
+});
+const isSlotMode = computed(() => selectedSlotId.value !== 0);
+const selectedSlot = computed(() =>
+  (villa.value?.timeSlots || []).find((s: any) => s.id === selectedSlotId.value),
+);
+const selectedSlotName = computed(() => selectedSlot.value?.name || '');
+const hasSelection = computed(() =>
+  isSlotMode.value ? !!checkIn.value : !!(checkIn.value && checkOut.value),
+);
+
+function fmtTime(min: number) {
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  return `${String(h).padStart(2, '0')}:${m ? String(m).padStart(2, '0') : '00'}`;
+}
 
 // 日期列表（加上 dayNum / isWeekend / isPast）
 const days_list = computed(() => {
@@ -171,8 +222,19 @@ const days = computed(() => {
   return Math.ceil(diff / (1000 * 60 * 60 * 24));
 });
 
-// 选中范围内的每日价格和
+// 选中范围内的每日价格和（整天档）；时段档取所选档期当日价格
 const villaAmount = computed(() => {
+  if (isSlotMode.value) {
+    if (!checkIn.value) return 0;
+    const info = slotInfoForDate.value.find((s: any) => s.id === selectedSlotId.value);
+    if (info) return Number(info.price);
+    // 兜底：用别墅时段配置价（按周末判断）
+    const s = selectedSlot.value;
+    if (!s) return 0;
+    const dow = new Date(checkIn.value).getDay();
+    const isWeekend = dow === 0 || dow === 5 || dow === 6;
+    return isWeekend && s.weekendPrice != null ? Number(s.weekendPrice) : Number(s.price);
+  }
   if (!checkIn.value || !checkOut.value) return 0;
   let total = 0;
   const start = new Date(checkIn.value);
@@ -187,6 +249,7 @@ const villaAmount = computed(() => {
 });
 
 const discountRate = computed(() => {
+  if (isSlotMode.value) return 1; // 时段档不参与连住折扣
   if (!villa.value || days.value < 3) return 1;
   if (days.value >= 7 && villa.value.discount7d) return Number(villa.value.discount7d);
   if (days.value >= 5 && villa.value.discount5d) return Number(villa.value.discount5d);
@@ -223,12 +286,49 @@ function changeMonth(delta: number) {
 }
 
 function isInRange(date: string) {
+  if (isSlotMode.value) return false;
   if (!checkIn.value || !checkOut.value) return false;
   return date >= checkIn.value && date <= checkOut.value;
 }
 
+// 切换档期：清空已选日期，避免跨模式状态残留
+function selectSlot(id: number) {
+  if (selectedSlotId.value === id) return;
+  selectedSlotId.value = id;
+  checkIn.value = '';
+  checkOut.value = '';
+  slotInfoForDate.value = [];
+}
+
+// 拉取某日各时段可订情况
+async function loadSlotInfo(date: string) {
+  try {
+    slotInfoForDate.value = await getVillaSlots(villaId, date);
+  } catch (e) {
+    slotInfoForDate.value = [];
+  }
+}
+
 function handleDayTap(day: any) {
-  if (day.status !== 1 || day.isPast) {
+  if (day.isPast) {
+    uni.showToast({ title: '该日期不可订', icon: 'none' });
+    return;
+  }
+
+  // 时段档：单日选择
+  if (isSlotMode.value) {
+    checkIn.value = day.date;
+    checkOut.value = day.date;
+    loadSlotInfo(day.date).then(() => {
+      const info = slotInfoForDate.value.find((s: any) => s.id === selectedSlotId.value);
+      if (info && !info.available) {
+        uni.showToast({ title: '该时段当日已被预订', icon: 'none' });
+      }
+    });
+    return;
+  }
+
+  if (day.status !== 1) {
     uni.showToast({ title: '该日期不可订', icon: 'none' });
     return;
   }
@@ -270,7 +370,7 @@ async function submitOrder() {
     uni.showToast({ title: '请先登录', icon: 'none' });
     return;
   }
-  if (!checkIn.value || !checkOut.value || !guests.value) {
+  if (!hasSelection.value || !guests.value) {
     uni.showToast({ title: '请填写完整预订信息', icon: 'none' });
     return;
   }
@@ -280,6 +380,7 @@ async function submitOrder() {
       villaId,
       checkIn: checkIn.value,
       checkOut: checkOut.value,
+      slotId: isSlotMode.value ? selectedSlotId.value : undefined,
       guests: parseInt(guests.value),
       contactName: contactName.value,
       contactPhone: contactPhone.value,
@@ -301,6 +402,17 @@ async function submitOrder() {
 .month-switch { display: flex; align-items: center; gap: 16rpx; }
 .switch-btn { width: 48rpx; height: 48rpx; line-height: 44rpx; text-align: center; background: #f5f5f5; border-radius: 50%; font-size: 36rpx; color: #333; }
 .month-text { font-size: 28rpx; color: #333; font-weight: bold; min-width: 180rpx; text-align: center; }
+
+.slot-list { display: flex; flex-wrap: wrap; gap: 16rpx; margin-top: 20rpx; }
+.slot-chip {
+  display: flex; flex-direction: column; align-items: center;
+  min-width: 180rpx; padding: 16rpx 24rpx;
+  border: 1rpx solid #ebeef5; border-radius: 12rpx; background: #fff;
+}
+.slot-chip.active { border-color: #ff6b35; background: #fff3ed; }
+.slot-name { font-size: 28rpx; color: #333; font-weight: bold; }
+.slot-chip.active .slot-name { color: #ff6b35; }
+.slot-time { font-size: 22rpx; color: #999; margin-top: 4rpx; }
 
 .tip-bar { background: #fff3ed; padding: 16rpx 24rpx; border-radius: 8rpx; font-size: 24rpx; color: #ff6b35; margin-bottom: 20rpx; }
 .selected-tip { color: #27ae60; font-weight: bold; }

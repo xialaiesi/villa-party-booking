@@ -1,6 +1,47 @@
 <template>
-  <div class="container booking-page" v-if="villa">
+  <div class="container booking-page booking-loading" v-if="bookingLoading">
+    <div class="skeleton-line page-title-line"></div>
+    <div class="mobile-booking-steps">
+      <span v-for="n in 3" :key="n" class="step-skeleton"></span>
+    </div>
+    <div class="booking-body">
+      <div class="left-col">
+        <div class="card loading-card">
+          <div class="villa-brief">
+            <div class="villa-brief-img skeleton-block"></div>
+            <div class="villa-info">
+              <div class="skeleton-line title"></div>
+              <div class="skeleton-line medium"></div>
+              <div class="skeleton-line short"></div>
+            </div>
+          </div>
+        </div>
+        <div class="card loading-card" v-for="n in 3" :key="n">
+          <div class="skeleton-line card-title"></div>
+          <div class="skeleton-line full"></div>
+          <div class="skeleton-line medium"></div>
+          <div class="skeleton-line short"></div>
+        </div>
+      </div>
+      <div class="right-col">
+        <div class="summary-card loading-card">
+          <div class="skeleton-line card-title"></div>
+          <div class="skeleton-line full"></div>
+          <div class="skeleton-line medium"></div>
+          <div class="skeleton-line price-line"></div>
+          <div class="skeleton-button"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="container booking-page" v-else-if="villa">
     <h2 class="page-title">确认预订</h2>
+    <div class="mobile-booking-steps">
+      <span :class="{ active: !!dateRange?.length }">选日期</span>
+      <span :class="{ active: !!form.contactName && !!form.contactPhone }">填信息</span>
+      <span :class="{ active: canSubmit }">确认支付</span>
+    </div>
 
     <div class="booking-body">
       <div class="left-col">
@@ -66,13 +107,13 @@
           <h3>联系信息</h3>
           <el-form :model="form" label-width="100px">
             <el-form-item label="入住人数">
-              <el-input-number v-model="form.guests" :min="1" />
+              <el-input-number v-model="form.guests" :min="1" class="guest-input" />
             </el-form-item>
             <el-form-item label="联系人">
-              <el-input v-model="form.contactName" placeholder="姓名" />
+              <el-input v-model="form.contactName" placeholder="姓名" autocomplete="name" />
             </el-form-item>
             <el-form-item label="手机号">
-              <el-input v-model="form.contactPhone" placeholder="联系电话" />
+              <el-input v-model="form.contactPhone" placeholder="联系电话" type="tel" inputmode="tel" autocomplete="tel" />
             </el-form-item>
             <el-form-item label="备注">
               <el-input v-model="form.remark" type="textarea" :rows="3" placeholder="特殊需求（选填）" />
@@ -115,8 +156,11 @@
             <span class="expand-arrow">{{ summaryExpanded ? '▲' : '▼' }}</span>
           </h3>
           <div class="mobile-summary-bar" v-if="!summaryExpanded">
-            <span class="final-price">¥{{ (totalAmount + deposit).toFixed(2) }}</span>
-            <el-button type="primary" size="default" @click="submitOrder">提交订单</el-button>
+            <div class="mobile-total-box">
+              <span class="mobile-total-label">实付</span>
+              <span class="final-price">¥{{ (totalAmount + deposit).toFixed(2) }}</span>
+            </div>
+            <el-button type="primary" size="default" :disabled="!canSubmit" @click="submitOrder">{{ submitButtonText }}</el-button>
           </div>
           <div class="fee-item">
             <span>别墅费用（{{ days }}晚）</span>
@@ -138,12 +182,15 @@
             <span>实付</span>
             <span class="final-price">¥{{ (totalAmount + deposit).toFixed(2) }}</span>
           </div>
-          <el-button type="primary" size="large" class="submit-btn" @click="submitOrder">
-            提交订单
+          <el-button type="primary" size="large" class="submit-btn" :disabled="!canSubmit" @click="submitOrder">
+            {{ submitButtonText }}
           </el-button>
         </div>
       </div>
     </div>
+  </div>
+  <div class="container booking-page" v-else>
+    <el-empty description="预订信息加载失败，请稍后重试" />
   </div>
 </template>
 
@@ -154,12 +201,14 @@ import { ElMessage } from 'element-plus';
 import { getVilla, getVillaCalendar } from '../../api/villa';
 import { createOrder } from '../../api/order';
 import { thumbUrl } from '../../utils/request';
+import { trackEvent } from '../../utils/tracker';
 
 const route = useRoute();
 const router = useRouter();
 const resolveImg = thumbUrl;
 
 const villa = ref<any>(null);
+const bookingLoading = ref(true);
 const summaryExpanded = ref(false);
 const dateRange = ref<string[]>([]);
 const form = reactive({
@@ -236,6 +285,17 @@ const discountLabel = computed(() => {
   return '';
 });
 
+const isPhoneValid = computed(() => /^1\d{10}$/.test(form.contactPhone.trim()));
+const canSubmit = computed(() => {
+  return !!dateRange.value?.length && !!form.contactName.trim() && isPhoneValid.value;
+});
+const submitButtonText = computed(() => {
+  if (!dateRange.value?.length) return '先选日期';
+  if (!form.contactName.trim()) return '填写联系人';
+  if (!isPhoneValid.value) return '填写手机号';
+  return '提交订单';
+});
+
 // 保存预订状态到 localStorage
 function saveBookingDraft() {
   const draft = {
@@ -302,9 +362,13 @@ async function loadCalendar() {
 
 onMounted(async () => {
   const id = parseInt(route.params.id as string);
-  villa.value = await getVilla(id);
-  restoreBookingDraft();
-  await loadCalendar();
+  try {
+    villa.value = await getVilla(id);
+    restoreBookingDraft();
+    await loadCalendar();
+  } finally {
+    bookingLoading.value = false;
+  }
 });
 
 async function submitOrder() {
@@ -312,11 +376,20 @@ async function submitOrder() {
     ElMessage.warning('请选择入住日期');
     return;
   }
-  if (!form.contactName || !form.contactPhone) {
-    ElMessage.warning('请填写联系信息');
+  if (!form.contactName.trim()) {
+    ElMessage.warning('请填写联系人');
+    return;
+  }
+  if (!isPhoneValid.value) {
+    ElMessage.warning('请填写正确的手机号');
     return;
   }
   try {
+    trackEvent('booking_submit_click', {
+      targetId: parseInt(route.params.id as string),
+      targetType: 'villa',
+      metadata: { nights: days.value, amount: totalAmount.value + deposit.value },
+    });
     const order: any = await createOrder({
       villaId: parseInt(route.params.id as string),
       checkIn: dateRange.value[0],
@@ -337,6 +410,81 @@ async function submitOrder() {
 <style scoped>
 .booking-page { padding: 30px 0 60px; }
 .page-title { font-size: 24px; margin-bottom: 24px; color: #333; }
+.mobile-booking-steps { display: none; }
+.booking-loading {
+  pointer-events: none;
+}
+.loading-card {
+  cursor: default;
+}
+.skeleton-block,
+.skeleton-line,
+.skeleton-button,
+.step-skeleton {
+  position: relative;
+  overflow: hidden;
+  background: #eef2f7;
+}
+.skeleton-block::after,
+.skeleton-line::after,
+.skeleton-button::after,
+.step-skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.68), transparent);
+  animation: skeleton-shimmer 1.3s infinite;
+}
+.skeleton-line {
+  height: 12px;
+  border-radius: 999px;
+}
+.skeleton-line.page-title-line {
+  width: 120px;
+  height: 26px;
+  margin-bottom: 24px;
+}
+.skeleton-line.title {
+  width: 72%;
+  height: 18px;
+  margin-bottom: 12px;
+}
+.skeleton-line.card-title {
+  width: 112px;
+  height: 18px;
+  margin-bottom: 20px;
+}
+.skeleton-line.full {
+  width: 100%;
+  margin-bottom: 12px;
+}
+.skeleton-line.medium {
+  width: 76%;
+  margin-bottom: 12px;
+}
+.skeleton-line.short {
+  width: 48%;
+}
+.skeleton-line.price-line {
+  width: 132px;
+  height: 32px;
+  margin: 18px 0;
+}
+.skeleton-button {
+  height: 48px;
+  border-radius: 24px;
+  margin-top: 20px;
+}
+.villa-brief-img {
+  width: 180px;
+  height: 130px;
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+@keyframes skeleton-shimmer {
+  100% { transform: translateX(100%); }
+}
 
 .booking-body { display: grid; grid-template-columns: 1fr 380px; gap: 24px; }
 
@@ -350,6 +498,7 @@ async function submitOrder() {
 .villa-brief img { width: 180px; height: 130px; object-fit: cover; border-radius: 8px; }
 .villa-info h3 { font-size: 18px; margin-bottom: 8px; }
 .villa-info p { font-size: 13px; color: #999; margin-top: 4px; }
+.guest-input { width: 180px; }
 
 /* 已预订提示 */
 .booked-hint {
@@ -431,14 +580,100 @@ async function submitOrder() {
   margin-top: 20px; font-size: 16px;
   background: linear-gradient(135deg, #ff6b35, #ff8f65); border: none;
 }
+.submit-btn.is-disabled,
+.summary-card :deep(.el-button.is-disabled) {
+  background: #e2e8f0 !important;
+  border-color: #e2e8f0 !important;
+  color: #94a3b8 !important;
+}
 
 .right-col { align-self: start; }
 .expand-arrow { font-size: 12px; color: #94a3b8; margin-left: 6px; }
 
 /* W-16: 小屏幕费用卡片适配 */
 @media (max-width: 768px) {
+  .booking-page {
+    padding: 14px 0 calc(96px + env(safe-area-inset-bottom));
+  }
+  .page-title {
+    font-size: 20px;
+    margin: 0 12px 12px;
+  }
+  .skeleton-line.page-title-line {
+    margin: 0 12px 12px;
+  }
+  .mobile-booking-steps {
+    display: flex;
+    gap: 8px;
+    margin: 0 12px 12px;
+  }
+  .mobile-booking-steps span {
+    flex: 1;
+    text-align: center;
+    padding: 8px 6px;
+    border-radius: 18px;
+    background: #fff;
+    color: #94a3b8;
+    font-size: 12px;
+    border: 1px solid #e2e8f0;
+  }
+  .mobile-booking-steps span.active {
+    color: #ff6b35;
+    background: #fff3ed;
+    border-color: #ffb48f;
+    font-weight: 700;
+  }
   .booking-body {
     grid-template-columns: 1fr; gap: 16px;
+  }
+  .card {
+    margin: 0 12px 12px;
+    padding: 18px;
+    border-radius: 10px;
+  }
+  .card h3 {
+    margin-bottom: 14px;
+    font-size: 16px;
+  }
+  .villa-brief {
+    gap: 12px;
+  }
+  .villa-brief img {
+    width: 112px;
+    height: 84px;
+  }
+  .villa-brief-img {
+    width: 112px;
+    height: 84px;
+  }
+  .villa-info h3 {
+    font-size: 16px;
+    line-height: 1.35;
+  }
+  .villa-info p {
+    font-size: 12px;
+  }
+  .booking-page :deep(.el-form-item) {
+    display: block;
+    margin-bottom: 16px;
+  }
+  .booking-page :deep(.el-form-item__label) {
+    justify-content: flex-start;
+    width: auto !important;
+    height: auto;
+    margin-bottom: 6px;
+    line-height: 1.4;
+    color: #475569;
+    font-weight: 600;
+  }
+  .booking-page :deep(.el-form-item__content) {
+    margin-left: 0 !important;
+  }
+  .guest-input,
+  .booking-page :deep(.el-input),
+  .booking-page :deep(.el-input-number),
+  .booking-page :deep(.el-textarea) {
+    width: 100%;
   }
   .right-col {
     position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;
@@ -460,6 +695,27 @@ async function submitOrder() {
   .summary-card.expanded h3 { margin-bottom: 16px; }
   .mobile-summary-bar {
     display: flex; align-items: center; justify-content: space-between;
+    gap: 14px;
+    margin-top: 8px;
+  }
+  .mobile-total-box {
+    display: flex;
+    flex-direction: column;
+  }
+  .mobile-total-label {
+    color: #94a3b8;
+    font-size: 11px;
+  }
+  .mobile-summary-bar .final-price {
+    font-size: 24px;
+  }
+  .mobile-summary-bar :deep(.el-button) {
+    min-width: 118px;
+    height: 42px;
+    border-radius: 22px;
+    font-weight: 700;
+    background: linear-gradient(135deg, #ff6b35, #ff8f65);
+    border: none;
   }
   .left-col { padding-bottom: 120px; }
 }

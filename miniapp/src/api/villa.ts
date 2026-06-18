@@ -26,6 +26,13 @@ export function getVillaCalendar(id: number, year: number, month: number) {
   });
 }
 
+export function getVillaSlots(id: number, date: string) {
+  return request<any[]>({
+    url: `/api/villas/${id}/slots`,
+    params: { date },
+  });
+}
+
 export function getVillaReviews(id: number, page = 1, pageSize = 10) {
   return request<any>({
     url: `/api/villas/${id}/reviews`,

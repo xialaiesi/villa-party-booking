@@ -12,6 +12,60 @@
       <div class="container hero-content">
         <h1>{{ siteConfig.hero_title || '找到你的完美别墅趴场地' }}</h1>
         <p>{{ siteConfig.hero_subtitle || '团建 · 生日 · 聚会 · 亲子 · 一站式解决' }}</p>
+        <div class="mobile-hero-points">
+          <span>{{ siteConfig.landing_city || '深圳' }}周边</span>
+          <span>整栋出租</span>
+          <span>管家推荐</span>
+        </div>
+        <div class="quick-match-panel">
+          <div class="quick-match-head">
+            <div>
+              <div class="quick-match-title">30 秒帮我选墅</div>
+              <div class="quick-match-sub">选场景、人数和预算，直接看合适房源</div>
+            </div>
+            <span class="quick-match-badge">管家推荐</span>
+          </div>
+          <div class="quick-match-row">
+            <div class="quick-match-group">
+              <span class="quick-match-label">场景</span>
+              <div class="quick-match-options">
+                <button
+                  v-for="opt in quickScenes"
+                  :key="opt.value"
+                  :class="{ active: quickScene === opt.value }"
+                  @click="quickScene = opt.value"
+                >{{ opt.label }}</button>
+              </div>
+            </div>
+            <div class="quick-match-group">
+              <span class="quick-match-label">人数</span>
+              <div class="quick-match-options">
+                <button
+                  v-for="opt in quickGuests"
+                  :key="opt.value"
+                  :class="{ active: quickGuest === opt.value }"
+                  @click="quickGuest = opt.value"
+                >{{ opt.label }}</button>
+              </div>
+            </div>
+            <div class="quick-match-group">
+              <span class="quick-match-label">人均预算</span>
+              <div class="quick-match-options">
+                <button
+                  v-for="opt in quickBudgets"
+                  :key="opt.value"
+                  :class="{ active: quickBudget === opt.value }"
+                  @click="quickBudget = opt.value"
+                >{{ opt.label }}</button>
+              </div>
+            </div>
+            <div class="quick-match-group quick-date-group">
+              <span class="quick-match-label">日期</span>
+              <input v-model="quickDate" type="date" class="quick-date-input" />
+            </div>
+          </div>
+          <button class="quick-match-submit" @click="goQuickMatch">立即匹配别墅</button>
+        </div>
         <div class="search-box">
           <el-input v-model="keyword" placeholder="搜索别墅名、地点..." size="large" class="search-input" @keyup.enter="goSearch">
             <template #prefix><el-icon><Search /></el-icon></template>
@@ -25,8 +79,8 @@
     </div>
 
     <!-- 数据信任条 -->
-    <div class="trust-bar" v-if="homeStats.villaCount">
-      <div class="container trust-inner">
+    <div class="trust-bar" v-if="homeLoading || homeStats.villaCount">
+      <div class="container trust-inner" v-if="!homeLoading">
         <div class="trust-item">
           <b ref="statVilla">{{ homeStats.villaCount }}+</b>
           <span>精选别墅</span>
@@ -40,6 +94,12 @@
           <span>真实好评</span>
         </div>
       </div>
+      <div class="container trust-inner trust-skeleton" v-else>
+        <div class="trust-item" v-for="n in 3" :key="n">
+          <div class="skeleton-line stat"></div>
+          <div class="skeleton-line label"></div>
+        </div>
+      </div>
     </div>
 
     <!-- 精选别墅（上提到第一位置） -->
@@ -49,7 +109,18 @@
           <h2>精选别墅</h2>
           <router-link to="/search" class="more-link">查看全部 →</router-link>
         </div>
-        <div class="villa-grid" v-if="villas.length">
+        <div class="villa-grid" v-if="homeLoading">
+          <div class="villa-card villa-card-skeleton" v-for="n in 6" :key="n">
+            <div class="villa-img-wrap skeleton-block"></div>
+            <div class="villa-body">
+              <div class="skeleton-line title"></div>
+              <div class="skeleton-line medium"></div>
+              <div class="skeleton-tags"><span></span><span></span><span></span></div>
+              <div class="skeleton-line footer"></div>
+            </div>
+          </div>
+        </div>
+        <div class="villa-grid" v-else-if="villas.length">
           <div class="villa-card" v-for="v in villas" :key="v.id" @click="goDetail(v.id)">
             <div class="villa-img-wrap">
               <img :src="resolveImg(v.coverImage) || '/vite.svg'" loading="lazy" @error="onImgError" />
@@ -75,15 +146,23 @@
             </div>
           </div>
         </div>
-        <el-skeleton v-else :rows="5" animated />
       </div>
     </div>
 
     <!-- 真实案例 -->
-    <div class="section-wrap bg-warm" v-if="featuredCases.length">
+    <div class="section-wrap bg-warm" v-if="homeLoading || featuredCases.length">
       <div class="container section section-compact">
         <div class="section-header"><h2>看看上周的趴体</h2></div>
-        <div class="cases-scroll">
+        <div class="cases-scroll" v-if="homeLoading">
+          <div class="case-card case-card-skeleton" v-for="n in 4" :key="n">
+            <div class="case-media skeleton-block"></div>
+            <div class="case-body">
+              <div class="skeleton-line title"></div>
+              <div class="skeleton-line short"></div>
+            </div>
+          </div>
+        </div>
+        <div class="cases-scroll" v-else>
           <div class="case-card" v-for="c in featuredCases" :key="c.id" @click="goDetail(c.villaId)">
             <div class="case-media">
               <img :src="resolveImg(c.cover)" loading="lazy" @error="onImgError" />
@@ -102,10 +181,19 @@
     </div>
 
     <!-- 限时活动 + 拼团合并展示 -->
-    <div class="section-wrap bg-warm" v-if="banners.length || groupBuys.length">
+    <div class="section-wrap bg-warm" v-if="homeLoading || banners.length || groupBuys.length">
       <div class="container section section-compact">
         <div class="section-header"><h2>优惠活动</h2></div>
-        <div class="promo-scroll">
+        <div class="promo-scroll" v-if="homeLoading">
+          <div class="promo-card promo-card-skeleton" v-for="n in 4" :key="n">
+            <div class="promo-media skeleton-block"></div>
+            <div class="promo-info">
+              <div class="skeleton-line title"></div>
+              <div class="skeleton-line short"></div>
+            </div>
+          </div>
+        </div>
+        <div class="promo-scroll" v-else>
           <div class="promo-card" v-for="b in banners" :key="'b-' + b.id" @click="goBanner(b)">
             <img :src="resolveImg(b.coverImage) || '/vite.svg'" loading="lazy" @error="onImgError" />
             <div class="promo-info">
@@ -126,13 +214,22 @@
     </div>
 
     <!-- 轰趴方案 -->
-    <div class="section-wrap bg-cool" v-if="activityPlans.length">
+    <div class="section-wrap bg-cool" v-if="homeLoading || activityPlans.length">
       <div class="container section section-compact">
         <div class="section-header">
           <h2>轰趴方案</h2>
           <span class="collapse-toggle" @click="showPlans = !showPlans">{{ showPlans ? '收起' : '展开' }}</span>
         </div>
-        <div class="plan-scroll" v-show="showPlans">
+        <div class="plan-scroll" v-if="homeLoading" v-show="showPlans">
+          <div class="plan-card-h plan-card-skeleton" v-for="n in 4" :key="n">
+            <div class="plan-media skeleton-block"></div>
+            <div class="plan-body-h">
+              <div class="skeleton-line title"></div>
+              <div class="skeleton-line short"></div>
+            </div>
+          </div>
+        </div>
+        <div class="plan-scroll" v-else v-show="showPlans">
           <div class="plan-card-h" v-for="p in activityPlans" :key="p.id">
             <img :src="resolveImg(p.coverImage) || '/vite.svg'" loading="lazy" @error="onImgError" />
             <div class="plan-body-h">
@@ -145,13 +242,27 @@
     </div>
 
     <!-- 氛围包 + 周边服务（横向滚动，紧凑展示） -->
-    <div class="section-wrap" v-if="themePacks.length || localServices.length">
+    <div class="section-wrap" v-if="homeLoading || themePacks.length || localServices.length">
       <div class="container section section-compact">
         <div class="section-header">
           <h2>增值服务</h2>
           <span class="collapse-toggle" @click="showServices = !showServices">{{ showServices ? '收起' : '展开' }}</span>
         </div>
-        <div v-show="showServices">
+        <div v-if="homeLoading" v-show="showServices">
+          <div class="addon-scroll">
+            <div class="addon-label"><div class="skeleton-line label"></div></div>
+            <div class="addon-list">
+              <div class="addon-card addon-card-skeleton" v-for="n in 4" :key="n">
+                <div class="addon-media skeleton-block"></div>
+                <div class="addon-body">
+                  <div class="skeleton-line title"></div>
+                  <div class="skeleton-line short"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div v-else v-show="showServices">
           <!-- 氛围包横向滚动 -->
           <div class="addon-scroll" v-if="themePacks.length">
             <div class="addon-label">氛围包</div>
@@ -193,7 +304,7 @@
     </footer>
 
     <!-- 微信咨询浮动按钮 -->
-    <div class="wechat-fab" @click="showWechatModal = true" v-if="siteConfig.landing_wechat_id || siteConfig.landing_wechat_qr">
+    <div class="wechat-fab" @click="openWechat('floating_fab')" v-if="siteConfig.landing_wechat_id || siteConfig.landing_wechat_qr">
       <div class="wechat-fab-icon">微信</div>
     </div>
     <div class="wechat-modal-overlay" v-if="showWechatModal" @click.self="showWechatModal = false">
@@ -203,7 +314,14 @@
         <p>扫码或搜索微信号添加</p>
         <img v-if="siteConfig.landing_wechat_qr" :src="siteConfig.landing_wechat_qr" class="wechat-qr" />
         <p class="wechat-id">微信号：{{ siteConfig.landing_wechat_id || 'villa_service' }}</p>
+        <button class="wechat-copy-btn" @click="copyWechat">复制微信号</button>
       </div>
+    </div>
+
+    <!-- H5 移动端底部转化栏 -->
+    <div class="mobile-home-bar">
+      <button class="mobile-home-consult" @click="openWechat('mobile_bar')">微信咨询</button>
+      <button class="mobile-home-main" @click="goSearch()">立即找别墅</button>
     </div>
 
     <!-- 返回顶部 -->
@@ -217,16 +335,22 @@ import { useRouter } from 'vue-router';
 import { Search } from '@element-plus/icons-vue';
 import { getHome, getSiteConfig, getHomeStats, getLanding } from '../../api/villa';
 import { thumbUrl } from '../../utils/request';
+import { trackEvent } from '../../utils/tracker';
 
 
 const router = useRouter();
 const keyword = ref('');
+const quickScene = ref('团建');
+const quickGuest = ref(15);
+const quickBudget = ref(300);
+const quickDate = ref('');
 const banners = ref<any[]>([]);
 const villas = ref<any[]>([]);
 const groupBuys = ref<any[]>([]);
 const themePacks = ref<any[]>([]);
 const activityPlans = ref<any[]>([]);
 const localServices = ref<any[]>([]);
+const homeLoading = ref(true);
 const showPlans = ref(true);
 const showServices = ref(false);
 const showWechatModal = ref(false);
@@ -237,7 +361,7 @@ const featuredCases = ref<any[]>([]);
 const siteConfig = reactive<Record<string, string>>({
   hero_title: '', hero_subtitle: '', hero_bg: '', hero_image: '', hero_video: '',
   banners: '[]', scene_tags: '[]', footer_text: '',
-  landing_wechat_qr: '', landing_wechat_id: '',
+  landing_wechat_qr: '', landing_wechat_id: '', landing_city: '',
 });
 
 // 显示名 → 搜索标签的映射
@@ -245,6 +369,23 @@ const sceneTagMap: Record<string, string> = {
   '团建聚会': '团建', '生日派对': '生日', '朋友聚会': '聚会',
   '亲子活动': '亲子', '毕业趴': '毕业趴', '闺蜜趴': '闺蜜趴',
 };
+const quickScenes = [
+  { label: '团建', value: '团建' },
+  { label: '生日', value: '生日' },
+  { label: '聚会', value: '聚会' },
+  { label: '亲子', value: '亲子' },
+];
+const quickGuests = [
+  { label: '8-10人', value: 10 },
+  { label: '10-15人', value: 15 },
+  { label: '15-20人', value: 20 },
+  { label: '20+人', value: 30 },
+];
+const quickBudgets = [
+  { label: '¥200内', value: 200 },
+  { label: '¥300内', value: 300 },
+  { label: '¥500内', value: 500 },
+];
 const scenes = computed(() => {
   try { return JSON.parse(siteConfig.scene_tags || '[]'); }
   catch { return ['团建聚会', '生日派对', '朋友聚会', '亲子活动', '毕业趴', '闺蜜趴']; }
@@ -258,30 +399,34 @@ const heroStyle = computed(() => {
 });
 
 onMounted(async () => {
-  const [cfg, home, statsRes, landingRes] = await Promise.allSettled([getSiteConfig(), getHome(), getHomeStats(), getLanding()]);
-  if (cfg.status === 'fulfilled') Object.assign(siteConfig, cfg.value as any);
-  if (statsRes.status === 'fulfilled') Object.assign(homeStats, statsRes.value as any);
-  if (home.status === 'fulfilled') {
-    const d = home.value as any;
-    banners.value = d.banners || [];
-    villas.value = d.villas || [];
-    groupBuys.value = d.groupBuys || [];
-    themePacks.value = d.themePacks || [];
-    activityPlans.value = d.activityPlans || [];
-    localServices.value = d.localServices || [];
-  }
-  // 真实案例（从 landing 数据中取）
-  if (landingRes.status === 'fulfilled') {
-    const ld = landingRes.value as any;
-    featuredCases.value = (ld.cases || []).slice(0, 4).map((c: any) => ({
-      id: c.id,
-      villaId: c.villa?.id,
-      cover: c.videos?.[0]?.cover || c.villa?.coverImage || c.images?.[0],
-      hasVideo: c.videos?.length > 0,
-      content: c.content ? (c.content.length > 50 ? c.content.slice(0, 50) + '...' : c.content) : '非常棒的体验！',
-      rating: c.rating,
-      nickname: c.user?.nickname || '匿名用户',
-    }));
+  try {
+    const [cfg, home, statsRes, landingRes] = await Promise.allSettled([getSiteConfig(), getHome(), getHomeStats(), getLanding()]);
+    if (cfg.status === 'fulfilled') Object.assign(siteConfig, cfg.value as any);
+    if (statsRes.status === 'fulfilled') Object.assign(homeStats, statsRes.value as any);
+    if (home.status === 'fulfilled') {
+      const d = home.value as any;
+      banners.value = d.banners || [];
+      villas.value = d.villas || [];
+      groupBuys.value = d.groupBuys || [];
+      themePacks.value = d.themePacks || [];
+      activityPlans.value = d.activityPlans || [];
+      localServices.value = d.localServices || [];
+    }
+    // 真实案例（从 landing 数据中取）
+    if (landingRes.status === 'fulfilled') {
+      const ld = landingRes.value as any;
+      featuredCases.value = (ld.cases || []).slice(0, 4).map((c: any) => ({
+        id: c.id,
+        villaId: c.villa?.id,
+        cover: c.videos?.[0]?.cover || c.villa?.coverImage || c.images?.[0],
+        hasVideo: c.videos?.length > 0,
+        content: c.content ? (c.content.length > 50 ? c.content.slice(0, 50) + '...' : c.content) : '非常棒的体验！',
+        rating: c.rating,
+        nickname: c.user?.nickname || '匿名用户',
+      }));
+    }
+  } finally {
+    homeLoading.value = false;
   }
 });
 
@@ -291,8 +436,51 @@ function goSearch(tag?: any) {
   else if (keyword.value) p.keyword = keyword.value;
   router.push({ path: '/search', query: p });
 }
+
+function goQuickMatch() {
+  const p: any = {
+    tag: quickScene.value,
+    guests: quickGuest.value,
+    per_budget: quickBudget.value,
+    max_price: quickGuest.value * quickBudget.value,
+    source: 'quick_match',
+  };
+  if (quickDate.value) p.check_in = quickDate.value;
+  trackEvent('quick_match_submit', {
+    metadata: {
+      page: 'home',
+      scene: quickScene.value,
+      guests: quickGuest.value,
+      perBudget: quickBudget.value,
+      date: quickDate.value,
+    },
+  });
+  router.push({ path: '/search', query: p });
+}
 function goDetail(id: number) { router.push(`/villa/${id}`); }
 function goBanner(b: any) { if (b.villaId) goDetail(b.villaId); }
+
+function openWechat(source: string) {
+  showWechatModal.value = true;
+  trackEvent('wechat_click', { metadata: { page: 'home', source } });
+}
+
+function copyWechat() {
+  const wechat = siteConfig.landing_wechat_id || 'villa_service';
+  if (navigator.clipboard?.writeText) {
+    navigator.clipboard.writeText(wechat).catch(() => {});
+  } else {
+    const ta = document.createElement('textarea');
+    ta.value = wechat;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+  }
+  trackEvent('wechat_copy', { metadata: { page: 'home' } });
+}
 
 function onImgError(e: Event) {
   const el = e.target as HTMLImageElement;
@@ -327,6 +515,100 @@ function onImgError(e: Event) {
   margin-bottom: 44px; letter-spacing: 6px;
   font-weight: 300;
   text-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+.mobile-hero-points { display: none; }
+.quick-match-panel {
+  max-width: 860px;
+  margin: 0 auto 18px;
+  padding: 18px;
+  border-radius: 18px;
+  background: rgba(255,255,255,0.94);
+  color: #1e293b;
+  box-shadow: 0 10px 36px rgba(0,0,0,0.16);
+  backdrop-filter: blur(14px);
+}
+.quick-match-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.quick-match-title {
+  font-size: 18px;
+  font-weight: 900;
+}
+.quick-match-sub {
+  margin-top: 4px;
+  color: #64748b;
+  font-size: 13px;
+}
+.quick-match-badge {
+  flex-shrink: 0;
+  padding: 5px 10px;
+  border-radius: 14px;
+  color: #16a34a;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  font-size: 12px;
+  font-weight: 800;
+}
+.quick-match-row {
+  display: grid;
+  grid-template-columns: 1.2fr 1.2fr 1.1fr 150px;
+  gap: 12px;
+  align-items: end;
+}
+.quick-match-label {
+  display: block;
+  margin-bottom: 8px;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 800;
+}
+.quick-match-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+.quick-match-options button {
+  border: 1px solid #e2e8f0;
+  border-radius: 18px;
+  padding: 7px 12px;
+  background: #fff;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.quick-match-options button.active {
+  border-color: #ff6b35;
+  background: #fff3ed;
+  color: #ff6b35;
+}
+.quick-date-input {
+  width: 100%;
+  height: 36px;
+  border: 1px solid #e2e8f0;
+  border-radius: 18px;
+  padding: 0 12px;
+  color: #334155;
+  background: #fff;
+  font-size: 12px;
+  font-weight: 700;
+}
+.quick-match-submit {
+  width: 100%;
+  height: 46px;
+  margin-top: 14px;
+  border: none;
+  border-radius: 24px;
+  color: #fff;
+  background: linear-gradient(135deg, #ff6b35, #ff4500);
+  font-size: 15px;
+  font-weight: 900;
+  cursor: pointer;
+  box-shadow: 0 8px 22px rgba(255,107,53,0.28);
 }
 .search-box { display: flex; gap: 0; max-width: 700px; margin: 0 auto; background: #fff; border-radius: 28px; padding: 4px; box-shadow: 0 8px 32px rgba(0,0,0,0.15); }
 .search-input { border: none; flex: 1; }
@@ -366,6 +648,74 @@ function onImgError(e: Event) {
 .trust-item { text-align: center; }
 .trust-item b { display: block; font-size: 28px; font-weight: 900; color: #ff6b35; }
 .trust-item span { font-size: 13px; color: #94a3b8; }
+.skeleton-block,
+.skeleton-line,
+.skeleton-tags span {
+  position: relative;
+  overflow: hidden;
+  background: #eef2f7;
+}
+.skeleton-block::after,
+.skeleton-line::after,
+.skeleton-tags span::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.68), transparent);
+  animation: skeleton-shimmer 1.3s infinite;
+}
+.skeleton-line {
+  height: 12px;
+  border-radius: 999px;
+}
+.skeleton-line.stat {
+  width: 58px;
+  height: 28px;
+  margin: 0 auto 8px;
+}
+.skeleton-line.label {
+  width: 70px;
+  margin: 0 auto;
+}
+.skeleton-line.title {
+  width: 72%;
+  height: 16px;
+  margin-bottom: 12px;
+}
+.skeleton-line.medium {
+  width: 86%;
+  margin-bottom: 12px;
+}
+.skeleton-line.short {
+  width: 46%;
+}
+.skeleton-line.footer {
+  width: 100%;
+  height: 22px;
+  margin-top: 16px;
+}
+.skeleton-tags {
+  display: flex;
+  gap: 6px;
+  margin-top: 12px;
+}
+.skeleton-tags span {
+  width: 54px;
+  height: 22px;
+  border-radius: 11px;
+}
+.villa-card-skeleton,
+.case-card-skeleton,
+.promo-card-skeleton,
+.plan-card-skeleton,
+.addon-card-skeleton {
+  pointer-events: none;
+  cursor: default;
+}
+@keyframes skeleton-shimmer {
+  100% { transform: translateX(100%); }
+}
 
 /* ===== 真实案例 ===== */
 .cases-scroll {
@@ -429,6 +779,37 @@ function onImgError(e: Event) {
 .wechat-modal-card p { font-size: 13px; color: #64748b; margin-bottom: 12px; }
 .wechat-qr { width: 180px; height: 180px; border-radius: 10px; }
 .wechat-id { font-size: 14px; color: #1e293b; font-weight: 600; margin-top: 12px; }
+.wechat-copy-btn {
+  margin-top: 12px;
+  border: none;
+  border-radius: 22px;
+  padding: 10px 28px;
+  color: #fff;
+  background: linear-gradient(135deg, #ff6b35, #ff4500);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.mobile-home-bar { display: none; }
+.mobile-home-consult,
+.mobile-home-main {
+  border: none;
+  height: 44px;
+  border-radius: 24px;
+  font-size: 15px;
+  font-weight: 800;
+}
+.mobile-home-consult {
+  flex: 0 0 112px;
+  color: #16a34a;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+}
+.mobile-home-main {
+  flex: 1;
+  color: #fff;
+  background: linear-gradient(135deg, #ff6b35, #ff4500);
+}
 
 /* ===== Section 通用 ===== */
 .section-wrap { padding: 0; }
@@ -501,6 +882,7 @@ function onImgError(e: Event) {
 }
 .promo-card:hover { transform: translateY(-3px); }
 .promo-card img { width: 100%; height: 130px; object-fit: cover; }
+.promo-media { height: 130px; }
 .promo-info { padding: 12px; }
 .promo-name { font-size: 14px; font-weight: 600; color: #1e293b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .promo-tag { color: #ff6b35; font-size: 13px; font-weight: 700; margin-top: 4px; }
@@ -520,6 +902,7 @@ function onImgError(e: Event) {
 }
 .plan-card-h:hover { transform: translateY(-3px); }
 .plan-card-h img { width: 100%; height: 120px; object-fit: cover; }
+.plan-media { height: 120px; }
 .plan-body-h { padding: 12px; }
 .plan-name { font-size: 14px; font-weight: 700; color: #1e293b; }
 .plan-meta { font-size: 12px; color: #64748b; margin-top: 4px; }
@@ -540,6 +923,7 @@ function onImgError(e: Event) {
 }
 .addon-card:hover { transform: translateY(-2px); }
 .addon-card img { width: 100%; height: 100px; object-fit: cover; }
+.addon-media { height: 100px; }
 .addon-body { padding: 10px; }
 .addon-name { font-size: 13px; font-weight: 600; color: #1e293b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .addon-price { margin-top: 4px; }
@@ -558,13 +942,82 @@ function onImgError(e: Event) {
 
 /* ===== 移动端适配 ===== */
 @media (max-width: 768px) {
-  .hero { padding: 60px 0 50px; }
+  .home-page { padding-bottom: calc(68px + env(safe-area-inset-bottom)); }
+  .hero { padding: 56px 0 42px; }
   .hero-content h1 { font-size: 26px; letter-spacing: 2px; }
-  .hero-content p { font-size: 14px; letter-spacing: 2px; margin-bottom: 24px; }
+  .hero-content p { font-size: 14px; letter-spacing: 2px; margin-bottom: 14px; }
+  .mobile-hero-points {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 18px;
+  }
+  .mobile-hero-points span {
+    padding: 6px 10px;
+    border-radius: 16px;
+    color: #fff;
+    background: rgba(255,255,255,0.18);
+    border: 1px solid rgba(255,255,255,0.24);
+    font-size: 12px;
+    backdrop-filter: blur(8px);
+  }
+  .quick-match-panel {
+    margin: 0 0 14px;
+    padding: 14px;
+    border-radius: 14px;
+  }
+  .quick-match-head {
+    margin-bottom: 12px;
+  }
+  .quick-match-title {
+    font-size: 16px;
+  }
+  .quick-match-sub {
+    font-size: 12px;
+  }
+  .quick-match-badge {
+    display: none;
+  }
+  .quick-match-row {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  .quick-match-options {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 2px;
+  }
+  .quick-match-options button {
+    flex-shrink: 0;
+    min-width: 74px;
+  }
+  .quick-match-submit {
+    height: 44px;
+    margin-top: 12px;
+  }
   .search-box { flex-direction: column; gap: 8px; border-radius: 12px; padding: 8px; }
   .search-box .el-button { border-radius: 12px; width: 100%; }
   .scene-tags { gap: 8px; }
   .scene-tags span { padding: 6px 14px; font-size: 12px; }
+  .wechat-fab { display: none; }
+  .mobile-home-bar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 120;
+    display: flex;
+    gap: 10px;
+    padding: 10px 14px;
+    padding-bottom: max(10px, env(safe-area-inset-bottom));
+    background: rgba(255,255,255,0.96);
+    box-shadow: 0 -4px 18px rgba(15,23,42,0.12);
+    backdrop-filter: blur(12px);
+  }
+  .wechat-modal-card {
+    width: calc(100% - 32px);
+    padding: 26px 20px;
+  }
 
   .trust-inner { gap: 24px; }
   .trust-item b { font-size: 20px; }
@@ -580,12 +1033,15 @@ function onImgError(e: Event) {
 
   .promo-card { flex: 0 0 180px; }
   .promo-card img { height: 100px; }
+  .promo-media { height: 100px; }
 
   .plan-card-h { flex: 0 0 200px; }
   .plan-card-h img { height: 100px; }
+  .plan-media { height: 100px; }
 
   .addon-card { flex: 0 0 140px; }
   .addon-card img { height: 80px; }
+  .addon-media { height: 80px; }
 }
 
 /* 图片加载失败占位 */

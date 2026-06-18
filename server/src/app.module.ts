@@ -38,6 +38,8 @@ import { SiteConfigModule } from './modules/site-config/site-config.module';
 import { ReviewModule } from './modules/review/review.module';
 import { AnalyticsModule } from './modules/analytics/analytics.module';
 import { XhsNoteModule } from './modules/xhs-note/xhs-note.module';
+import { ChatModule } from './modules/chat/chat.module';
+import { MembershipModule } from './modules/membership/membership.module';
 
 @Module({
   imports: [
@@ -78,6 +80,8 @@ import { XhsNoteModule } from './modules/xhs-note/xhs-note.module';
     ReviewModule,
     AnalyticsModule,
     XhsNoteModule,
+    ChatModule,
+    MembershipModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: AllExceptionsFilter },

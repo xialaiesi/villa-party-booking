@@ -4,6 +4,7 @@ export function createOrder(data: {
   villaId: number;
   checkIn: string;
   checkOut: string;
+  slotId?: number;
   guests: number;
   contactName?: string;
   contactPhone?: string;
@@ -27,6 +28,19 @@ export function cancelOrder(id: number, reason?: string) {
     method: 'POST',
     data: { reason },
   });
+}
+
+export function signPact(id: number, data: {
+  leaderName: string;
+  leaderPhone: string;
+  leaderIdTail?: string;
+  partySize?: number;
+}) {
+  return request<any>({ url: `/api/orders/${id}/sign-pact`, method: 'POST', data });
+}
+
+export function getSiteConfig() {
+  return request<any>({ url: '/api/site-config' });
 }
 
 export function payOrder(id: number) {

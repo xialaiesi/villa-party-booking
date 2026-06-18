@@ -142,6 +142,7 @@ const quickMenu = [
   { name: '房态日历', icon: '📅', url: '/pages/merchant/calendar/index' },
   { name: '套餐管理', icon: '📦', url: '/pages/merchant/package/index' },
   { name: '订单管理', icon: '📋', url: '/pages/merchant/order-manage/index' },
+  { name: '客户咨询', icon: '💬', url: '/pages/merchant/chat/index' },
   { name: '评价管理', icon: '⭐', url: '/pages/merchant/review/index' },
   { name: '活动方案', icon: '🎭', url: '/pages/merchant/activity-plan/index' },
   { name: '氛围包', icon: '✨', url: '/pages/merchant/theme-pack/index' },

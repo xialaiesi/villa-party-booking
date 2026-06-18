@@ -75,27 +75,26 @@
 
     <!-- 推荐别墅 -->
     <view class="section">
-      <text class="section-title">🏡 推荐别墅</text>
+      <text class="section-title">推荐别墅</text>
       <Skeleton v-if="loading" type="list" :count="3" />
-      <template v-else>
+      <view v-else class="villa-grid">
         <view class="villa-card" v-for="villa in villas" :key="villa.id" @tap="goDetail(villa.id)">
-          <image class="villa-cover" :src="resolveImg(villa.coverImage)" mode="aspectFill" lazy-load />
+          <view class="villa-cover-wrap">
+            <image class="villa-cover" :src="resolveImg(villa.coverImage)" mode="aspectFill" lazy-load />
+            <text class="villa-price-tag">¥{{ villa.basePrice }}<text class="price-unit">/晚</text></text>
+          </view>
           <view class="villa-info">
-            <view class="villa-header">
-              <text class="villa-name">{{ villa.name }}</text>
-              <text class="villa-badge" v-if="villa.merchantName">{{ villa.merchantName }}</text>
-            </view>
-            <text class="villa-address">📍 {{ villa.address }}</text>
-            <view class="villa-tags">
-              <text class="tag" v-for="tag in (villa.tags || '').split(',').filter(Boolean)" :key="tag">{{ tag }}</text>
-            </view>
-            <view class="villa-bottom">
-              <text class="villa-price">¥{{ villa.basePrice }}<text class="price-unit">/晚起</text></text>
-              <text class="villa-guests">可住 {{ villa.maxGuests }} 人</text>
+            <text class="villa-name">{{ villa.name }}</text>
+            <text class="villa-address">{{ villa.address }}</text>
+            <view class="villa-meta">
+              <text class="villa-guests">{{ villa.maxGuests }}人</text>
+              <view class="villa-tags">
+                <text class="tag" v-for="tag in (villa.tags || '').split(',').filter(Boolean).slice(0, 2)" :key="tag">{{ tag }}</text>
+              </view>
             </view>
           </view>
         </view>
-      </template>
+      </view>
     </view>
 
     <!-- 趴友圈精选 -->
@@ -135,14 +134,14 @@ const themePacks = ref<any[]>([]);
 const loading = ref(true);
 
 const gridItems = [
-  { name: '智能选墅', icon: '🎯', url: '/pages/smart/index' },
+  { name: '智能选墅', icon: '🏠', url: '/pages/smart/index' },
   { name: '活动方案', icon: '🎭', url: '/pages/plan/index' },
-  { name: '氛围包', icon: '✨', url: '/pages/theme-pack/index' },
-  { name: '周边服务', icon: '🍳', url: '/pages/service/index' },
-  { name: '趴友圈', icon: '💬', url: '/pages/community/index' },
-  { name: '限定活动', icon: '🎉', url: '/pages/seasonal/index' },
-  { name: 'AI策划', icon: '🤖', url: '/pages/planner/index' },
-  { name: '我的相册', icon: '📸', url: '/pages/album/index' },
+  { name: '氛围包', icon: '🎨', url: '/pages/theme-pack/index' },
+  { name: '周边服务', icon: '🛎️', url: '/pages/service/index' },
+  { name: '趴友圈', icon: '👥', url: '/pages/community/index' },
+  { name: '限定活动', icon: '🎪', url: '/pages/seasonal/index' },
+  { name: 'AI策划', icon: '💡', url: '/pages/planner/index' },
+  { name: '我的相册', icon: '🖼️', url: '/pages/album/index' },
 ];
 
 onShow(async () => {
@@ -195,96 +194,110 @@ function goGroup(id: number) {
 
 .search-bar {
   display: flex; align-items: center; gap: 12rpx;
-  background: #fff; margin: 20rpx; padding: 20rpx 30rpx;
-  border-radius: 40rpx; box-shadow: 0 2rpx 10rpx rgba(0,0,0,0.04);
+  background: #fff; margin: 16rpx 20rpx; padding: 18rpx 28rpx;
+  border-radius: 40rpx; box-shadow: 0 2rpx 12rpx rgba(0,0,0,0.06);
 }
 .search-icon { font-size: 28rpx; }
-.search-placeholder { color: #999; font-size: 26rpx; flex: 1; }
+.search-placeholder { color: #bbb; font-size: 26rpx; flex: 1; }
 
-.banner { height: 320rpx; margin: 0 20rpx; border-radius: 16rpx; overflow: hidden; }
+.banner { height: 300rpx; margin: 0 20rpx; border-radius: 16rpx; overflow: hidden; }
 .banner-item { position: relative; height: 100%; }
 .banner-img { width: 100%; height: 100%; }
 .banner-overlay {
   position: absolute; bottom: 0; left: 0; right: 0;
-  padding: 30rpx; color: #fff;
-  background: linear-gradient(transparent, rgba(0,0,0,0.6));
+  padding: 24rpx; color: #fff;
+  background: linear-gradient(transparent, rgba(0,0,0,0.55));
 }
-.banner-title { font-size: 34rpx; font-weight: bold; color: #fff; display: block; }
-.banner-desc { font-size: 26rpx; color: #ffd700; display: block; margin-top: 6rpx; }
+.banner-title { font-size: 32rpx; font-weight: bold; color: #fff; display: block; }
+.banner-desc { font-size: 24rpx; color: #ffd700; display: block; margin-top: 4rpx; }
 
 .grid {
   display: grid; grid-template-columns: repeat(4, 1fr);
-  background: #fff; margin: 20rpx; padding: 30rpx 0;
-  border-radius: 16rpx; gap: 20rpx 0;
+  background: #fff; margin: 16rpx 20rpx; padding: 24rpx 0 20rpx;
+  border-radius: 16rpx; gap: 16rpx 0;
 }
-.grid-item { display: flex; flex-direction: column; align-items: center; gap: 10rpx; }
-.grid-icon { font-size: 52rpx; }
-.grid-name { font-size: 22rpx; color: #333; }
+.grid-item { display: flex; flex-direction: column; align-items: center; gap: 8rpx; }
+.grid-icon { font-size: 48rpx; }
+.grid-name { font-size: 22rpx; color: #555; }
 
 .ai-card {
   display: flex; align-items: center;
-  margin: 20rpx; padding: 30rpx;
+  margin: 0 20rpx 16rpx; padding: 20rpx 24rpx;
   background: linear-gradient(135deg, #667eea, #764ba2);
-  border-radius: 16rpx;
-  box-shadow: 0 4rpx 20rpx rgba(102,126,234,0.3);
+  border-radius: 12rpx;
 }
 .ai-left { flex: 1; }
-.ai-title { font-size: 30rpx; font-weight: bold; color: #fff; display: block; }
-.ai-desc { font-size: 22rpx; color: rgba(255,255,255,0.85); display: block; margin-top: 6rpx; }
-.ai-arrow { color: #fff; font-size: 36rpx; }
+.ai-title { font-size: 26rpx; font-weight: bold; color: #fff; display: block; }
+.ai-desc { font-size: 20rpx; color: rgba(255,255,255,0.8); display: block; margin-top: 4rpx; }
+.ai-arrow { color: rgba(255,255,255,0.7); font-size: 32rpx; }
 
-.section { margin: 30rpx 20rpx; }
-.section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20rpx; }
-.section-title { font-size: 32rpx; font-weight: bold; color: #333; }
+.section { margin: 20rpx; }
+.section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16rpx; }
+.section-title { font-size: 30rpx; font-weight: bold; color: #333; }
 .section-more { font-size: 24rpx; color: #999; }
 
 .scroll-x { white-space: nowrap; display: flex; }
 
 .group-card {
-  display: inline-block; width: 340rpx; margin-right: 16rpx;
+  display: inline-block; width: 300rpx; margin-right: 12rpx;
   background: #fff; border-radius: 12rpx; overflow: hidden; vertical-align: top;
 }
-.group-img { width: 100%; height: 200rpx; }
-.group-body { padding: 16rpx; }
-.group-name { font-size: 26rpx; color: #333; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
-.group-discount { font-size: 24rpx; color: #ff6b35; font-weight: bold; display: block; margin-top: 6rpx; }
-.group-progress { margin-top: 8rpx; }
-.progress-text { font-size: 22rpx; color: #999; }
+.group-img { width: 100%; height: 180rpx; }
+.group-body { padding: 12rpx; }
+.group-name { font-size: 24rpx; color: #333; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
+.group-discount { font-size: 24rpx; color: #ff6b35; font-weight: bold; display: block; margin-top: 4rpx; }
+.group-progress { margin-top: 6rpx; }
+.progress-text { font-size: 20rpx; color: #999; }
 
 .pack-card {
-  display: inline-block; width: 260rpx; margin-right: 16rpx;
+  display: inline-block; width: 240rpx; margin-right: 12rpx;
   background: #fff; border-radius: 12rpx; overflow: hidden; vertical-align: top;
 }
-.pack-img { width: 100%; height: 160rpx; }
-.pack-body { padding: 12rpx; }
-.pack-name { font-size: 24rpx; color: #333; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.pack-price { font-size: 26rpx; color: #ff6b35; font-weight: bold; display: block; margin-top: 6rpx; }
+.pack-img { width: 100%; height: 150rpx; }
+.pack-body { padding: 10rpx 12rpx; }
+.pack-name { font-size: 22rpx; color: #333; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pack-price { font-size: 24rpx; color: #ff6b35; font-weight: bold; display: block; margin-top: 4rpx; }
 
-.villa-card { background: #fff; border-radius: 16rpx; overflow: hidden; margin-bottom: 20rpx; }
-.villa-cover { width: 100%; height: 360rpx; }
-.villa-info { padding: 24rpx; }
-.villa-header { display: flex; justify-content: space-between; align-items: center; }
-.villa-name { font-size: 32rpx; font-weight: bold; color: #333; }
-.villa-badge { font-size: 20rpx; color: #ff6b35; background: #fff3ed; padding: 4rpx 12rpx; border-radius: 10rpx; }
-.villa-address { font-size: 22rpx; color: #999; display: block; margin-top: 8rpx; }
-.villa-tags { margin-top: 12rpx; }
-.tag {
-  display: inline-block; background: #fff3ed; color: #ff6b35;
-  font-size: 20rpx; padding: 4rpx 14rpx; border-radius: 20rpx; margin-right: 10rpx;
+/* 别墅双列卡片 */
+.villa-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12rpx; }
+.villa-card { background: #fff; border-radius: 12rpx; overflow: hidden; }
+.villa-cover-wrap { position: relative; }
+.villa-cover { width: 100%; height: 220rpx; display: block; }
+.villa-price-tag {
+  position: absolute; bottom: 8rpx; left: 8rpx;
+  background: rgba(255, 107, 53, 0.9); color: #fff;
+  font-size: 24rpx; font-weight: bold; padding: 4rpx 12rpx; border-radius: 6rpx;
 }
-.villa-bottom { display: flex; justify-content: space-between; align-items: center; margin-top: 16rpx; }
-.villa-price { color: #ff6b35; font-size: 34rpx; font-weight: bold; }
-.price-unit { font-size: 20rpx; color: #999; font-weight: normal; }
-.villa-guests { font-size: 22rpx; color: #666; }
+.villa-price-tag .price-unit { font-size: 18rpx; font-weight: normal; opacity: 0.85; }
+.villa-info { padding: 12rpx; }
+.villa-name {
+  font-size: 26rpx; font-weight: bold; color: #333; display: block;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.villa-address {
+  font-size: 20rpx; color: #999; display: block; margin-top: 4rpx;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.villa-meta { display: flex; align-items: center; gap: 8rpx; margin-top: 8rpx; }
+.villa-guests {
+  font-size: 18rpx; color: #666; background: #f5f5f5;
+  padding: 2rpx 10rpx; border-radius: 4rpx; flex-shrink: 0;
+}
+.villa-tags { display: flex; gap: 6rpx; flex: 1; overflow: hidden; }
+.tag {
+  background: #fff3ed; color: #ff6b35;
+  font-size: 18rpx; padding: 2rpx 10rpx; border-radius: 4rpx;
+  white-space: nowrap; flex-shrink: 0;
+}
 
-.post-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16rpx; }
+.post-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12rpx; }
 .post-item { background: #fff; border-radius: 12rpx; overflow: hidden; }
-.post-img { width: 100%; height: 280rpx; }
+.post-img { width: 100%; height: 240rpx; }
 .post-placeholder { background: #f0f0f0; }
 .post-footer {
-  padding: 12rpx 16rpx;
+  padding: 10rpx 12rpx;
   display: flex; justify-content: space-between; align-items: center;
 }
-.post-user { font-size: 22rpx; color: #666; }
-.post-like { font-size: 22rpx; color: #ff6b35; }
+.post-user { font-size: 20rpx; color: #666; }
+.post-like { font-size: 20rpx; color: #ff6b35; }
 </style>

@@ -1,7 +1,7 @@
 // 本地开发：用电脑局域网 IP，真机调试时手机需要和电脑在同一个 WiFi
 // 真机调试时 localhost 指的是手机自己，所以要用局域网 IP
 // TODO: 生产环境改为正式域名
-export const BASE_URL = 'http://192.168.110.43:3000';
+export const BASE_URL = 'http://124.222.97.96';
 
 /** 将服务器相对 URL 转为完整 URL */
 export function resolveImageUrl(url: string): string {

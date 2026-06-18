@@ -17,7 +17,8 @@
           <image class="villa-cover" :src="resolveImg(order.villa?.coverImage)" mode="aspectFill" />
           <view class="order-info">
             <text class="villa-name">{{ order.villa?.name }}</text>
-            <text class="order-date">{{ order.checkIn }} ~ {{ order.checkOut }}</text>
+            <text class="order-date" v-if="order.slotName">{{ order.checkIn }} · {{ order.slotName }}</text>
+            <text class="order-date" v-else>{{ order.checkIn }} ~ {{ order.checkOut }}</text>
             <text class="order-amount">¥{{ order.totalAmount }}</text>
           </view>
         </view>

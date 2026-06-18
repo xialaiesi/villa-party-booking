@@ -34,6 +34,14 @@
       </view>
     </view>
 
+    <view class="card">
+      <text class="card-title">派对公约</text>
+      <view class="form-group">
+        <text class="label">入住前客户需阅读并签署的公约（每行一条）</text>
+        <textarea class="textarea tall" v-model="config.party_pact" placeholder="噪音管理、人数上限、安全责任等" />
+      </view>
+    </view>
+
     <button class="save-btn" @tap="handleSave">保存配置</button>
   </view>
 </template>
@@ -49,6 +57,7 @@ const config = reactive({
   sceneTags: '',
   contactPhone: '',
   announcement: '',
+  party_pact: '',
 });
 
 onLoad(async () => {
@@ -75,6 +84,7 @@ async function handleSave() {
 .label { font-size: 26rpx; color: #666; display: block; margin-bottom: 10rpx; }
 .input { width: 100%; height: 80rpx; background: #f5f7fa; border-radius: 12rpx; padding: 0 20rpx; font-size: 28rpx; box-sizing: border-box; }
 .textarea { width: 100%; height: 140rpx; background: #f5f7fa; border-radius: 12rpx; padding: 20rpx; font-size: 28rpx; box-sizing: border-box; }
+.textarea.tall { height: 280rpx; }
 .save-btn {
   position: fixed; bottom: 40rpx; left: 24rpx; right: 24rpx;
   height: 88rpx; line-height: 88rpx;

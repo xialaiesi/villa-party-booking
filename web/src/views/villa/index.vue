@@ -1,10 +1,37 @@
 <template>
-  <div class="container villa-detail" v-if="villa">
+  <div class="container villa-detail villa-detail-loading" v-if="detailLoading">
+    <div class="detail-loading-gallery skeleton-block"></div>
+    <div class="detail-body">
+      <div class="main-col">
+        <div class="card loading-card">
+          <div class="skeleton-line title"></div>
+          <div class="skeleton-line medium"></div>
+          <div class="skeleton-line short"></div>
+        </div>
+        <div class="card loading-card" v-for="n in 3" :key="n">
+          <div class="skeleton-line card-title"></div>
+          <div class="skeleton-line full"></div>
+          <div class="skeleton-line medium"></div>
+          <div class="skeleton-line short"></div>
+        </div>
+      </div>
+      <div class="side-col">
+        <div class="booking-card loading-card">
+          <div class="skeleton-line price-loader"></div>
+          <div class="skeleton-line full"></div>
+          <div class="skeleton-button"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="container villa-detail" v-else-if="villa">
     <!-- 图片画廊 -->
     <div class="gallery">
       <div class="main-image" @mousedown="onDragStart" @mousemove="onDragMove" @mouseup="onDragEnd" @mouseleave="onDragEnd">
         <div class="img-skeleton" v-if="mainImageLoading"></div>
         <el-image
+          class="main-gallery-image"
           :src="resolveImg(currentImage || '')"
           fit="cover"
           :preview-src-list="allImages"
@@ -13,10 +40,9 @@
           loading="lazy"
           @load="mainImageLoading = false"
           @error="mainImageLoading = false; mainImageError = true"
-          style="width: 100%; height: 500px; border-radius: 12px; user-select: none;"
           v-show="!mainImageError"
         />
-        <div class="img-error-placeholder" v-if="mainImageError" style="width: 100%; height: 500px; border-radius: 12px;">
+        <div class="img-error-placeholder main-gallery-placeholder" v-if="mainImageError">
           <span>图片加载失败</span>
         </div>
         <!-- 左右箭头 -->
@@ -37,6 +63,38 @@
         </div>
         <div class="thumb view-all" v-if="villa.images?.length > 5" @click="currentIndex = 5">
           <span>+{{ villa.images.length - 5 }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 首屏决策卡 -->
+    <div class="decision-card">
+      <div class="decision-main">
+        <div class="decision-kicker">适合{{ primaryScene }} · 整栋出租</div>
+        <h1>{{ villa.name }}</h1>
+        <div class="decision-address">📍 {{ villa.address }}</div>
+        <div class="decision-tags">
+          <span v-for="t in villaTags" :key="t">{{ t }}</span>
+          <span v-if="villa.merchant">{{ villa.merchant.name }}</span>
+        </div>
+      </div>
+      <div class="decision-side">
+        <div class="decision-price">
+          <span class="decision-price-main">¥{{ villa.basePrice }}</span>
+          <span class="decision-price-unit">起/晚</span>
+        </div>
+        <div class="decision-per">满员约 ¥{{ perPersonPrice }}/人</div>
+        <div class="decision-metrics">
+          <div><b>{{ villa.maxGuests }}</b><span>可住人数</span></div>
+          <div><b>{{ villa.bedrooms }}</b><span>卧室</span></div>
+          <div><b>{{ villa.ratingAvg || '新' }}</b><span>{{ villa.ratingAvg ? '评分' : '上架' }}</span></div>
+        </div>
+        <div class="decision-facilities" v-if="topFacilities.length">
+          <span v-for="f in topFacilities" :key="f">{{ f }}</span>
+        </div>
+        <div class="decision-actions">
+          <button class="decision-consult" @click="openWechatConsult('decision_card')">微信咨询</button>
+          <button class="decision-book" @click="goBooking">立即预订</button>
         </div>
       </div>
     </div>
@@ -239,7 +297,7 @@
           </div>
 
           <!-- 微信咨询 -->
-          <div class="wechat-consult" @click="showWechat = true">
+          <div class="wechat-consult" @click="openWechatConsult('side_card')">
             <span>不确定？先微信聊聊</span>
           </div>
         </div>
@@ -249,12 +307,27 @@
           <div class="wechat-popup">
             <div class="wechat-popup-close" @click="showWechat = false">&times;</div>
             <h3>微信咨询</h3>
-            <p>扫码或搜索添加微信</p>
+            <p>复制下面这段话，发给管家更快确认档期</p>
+            <div class="wechat-consult-text">{{ detailConsultText }}</div>
             <p class="wechat-popup-id">微信号：villa_service</p>
+            <button class="wechat-copy-btn" @click="copyWechat">复制咨询话术</button>
           </div>
         </div>
       </div>
     </div>
+
+    <!-- 移动端底部转化栏 -->
+    <div class="mobile-action-bar">
+      <button class="mobile-consult-btn" @click="openWechatConsult('mobile_bar')">
+        <span>微信咨询</span>
+      </button>
+      <div class="mobile-price-box">
+        <span class="mobile-price">¥{{ villa.basePrice }}</span>
+        <span class="mobile-unit">起/晚 · 满员约 ¥{{ perPersonPrice }}/人</span>
+      </div>
+      <button class="mobile-book-btn" @click="goBooking">立即预订</button>
+    </div>
+
     <!-- 分享卡片弹窗 -->
     <div class="share-modal" v-if="shareCardUrl" @click.self="shareCardUrl = ''">
       <div class="share-card-wrap">
@@ -265,6 +338,9 @@
       </div>
     </div>
     <canvas ref="shareCanvas" style="display: none;" />
+  </div>
+  <div class="container villa-detail" v-else>
+    <el-empty description="别墅信息加载失败，请稍后重试" />
   </div>
 </template>
 
@@ -283,6 +359,7 @@ const userStore = useUserStore();
 const resolveImg = detailUrl;
 
 const villa = ref<any>(null);
+const detailLoading = ref(true);
 const reviews = ref<any[]>([]);
 const reviewStats = ref({ avgRating: '0.0', total: 0 });
 const currentIndex = ref(0);
@@ -354,6 +431,36 @@ const allImages = computed(() =>
   (villa.value?.images || []).map((img: any) => detailUrl(img.url)),
 );
 
+const villaTags = computed(() =>
+  (villa.value?.tags || '').split(',').map((t: string) => t.trim()).filter(Boolean).slice(0, 4),
+);
+const topFacilities = computed(() =>
+  (villa.value?.facilities || []).map((f: any) => f.name).filter(Boolean).slice(0, 4),
+);
+const primaryScene = computed(() => {
+  const tags = villaTags.value;
+  const scene = ['团建', '生日', '聚会', '亲子', '泳池', 'KTV'].find(t => tags.includes(t));
+  return scene || '多人聚会';
+});
+const perPersonPrice = computed(() => {
+  if (!villa.value) return 0;
+  return Math.max(1, Math.ceil(Number(villa.value.basePrice || 0) / Math.max(Number(villa.value.maxGuests || 1), 1)));
+});
+const queryGuests = computed(() => route.query.guests ? Number(route.query.guests) : null);
+const queryBudget = computed(() => route.query.per_budget ? Number(route.query.per_budget) : null);
+const queryDate = computed(() => (route.query.check_in as string) || '');
+const queryScene = computed(() => (route.query.scene as string) || primaryScene.value);
+const detailConsultText = computed(() => {
+  if (!villa.value) return '你好，我想咨询这栋别墅，麻烦帮我确认一下档期和价格。';
+  const parts = [`你好，我想咨询「${villa.value.name}」`];
+  if (queryDate.value) parts.push(`${queryDate.value}入住`);
+  if (queryGuests.value) parts.push(`${queryGuests.value}人左右`);
+  if (queryScene.value) parts.push(`适合${queryScene.value}`);
+  if (queryBudget.value) parts.push(`人均预算${queryBudget.value}元内`);
+  parts.push(`页面价格¥${villa.value.basePrice}起/晚`);
+  return parts.join('，') + '，麻烦帮我确认是否合适。';
+});
+
 // 多维度评分（后端暂无多维度数据，用总评分模拟）
 const dimensionRatings = computed(() => {
   const avg = parseFloat(reviewStats.value.avgRating) || 0;
@@ -395,16 +502,56 @@ onMounted(async () => {
       basePrice: Number(v.basePrice),
       maxGuests: v.maxGuests,
     }));
-  } catch (e) { console.error(e); }
+  } catch (e) {
+    console.error(e);
+  } finally {
+    detailLoading.value = false;
+  }
 });
 
 function goBooking() {
+  trackEvent('booking_click', {
+    targetId: Number(route.params.id),
+    targetType: 'villa',
+    metadata: { page: 'villa_detail' },
+  });
   if (!userStore.isLoggedIn) {
     ElMessage.warning('请先登录');
     router.push(`/login?redirect=/booking/${route.params.id}`);
     return;
   }
   router.push(`/booking/${route.params.id}`);
+}
+
+function openWechatConsult(source: string) {
+  showWechat.value = true;
+  trackEvent('wechat_click', {
+    targetId: Number(route.params.id),
+    targetType: 'villa',
+    metadata: { page: 'villa_detail', source },
+  });
+}
+
+function copyWechat() {
+  const wechat = `${detailConsultText.value} 微信号：villa_service`;
+  if (navigator.clipboard?.writeText) {
+    navigator.clipboard.writeText(wechat).catch(() => {});
+  } else {
+    const ta = document.createElement('textarea');
+    ta.value = wechat;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+  }
+  trackEvent('wechat_copy', {
+    targetId: Number(route.params.id),
+    targetType: 'villa',
+    metadata: { page: 'villa_detail', text: detailConsultText.value },
+  });
+  ElMessage.success('咨询话术已复制');
 }
 
 function formatDate(d: string) {
@@ -539,6 +686,13 @@ function downloadShareCard() {
 .gallery { margin-bottom: 30px; }
 .main-image { margin-bottom: 12px; position: relative; cursor: grab; }
 .main-image:active { cursor: grabbing; }
+.main-gallery-image,
+.main-gallery-placeholder {
+  width: 100%;
+  height: 500px;
+  border-radius: 12px;
+  user-select: none;
+}
 
 .gallery-arrow {
   position: absolute; top: 50%; transform: translateY(-50%);
@@ -572,6 +726,125 @@ function downloadShareCard() {
   background: rgba(0,0,0,0.6); color: #fff;
   display: flex; align-items: center; justify-content: center;
   font-size: 18px; font-weight: bold;
+}
+.decision-card {
+  display: grid;
+  grid-template-columns: 1fr 360px;
+  gap: 24px;
+  margin-bottom: 24px;
+  padding: 26px;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 4px 22px rgba(15,23,42,0.06);
+}
+.decision-kicker {
+  display: inline-flex;
+  padding: 5px 12px;
+  border-radius: 16px;
+  background: #fff3ed;
+  color: #ff6b35;
+  font-size: 12px;
+  font-weight: 800;
+}
+.decision-main h1 {
+  margin-top: 12px;
+  color: #1e293b;
+  font-size: 30px;
+  line-height: 1.25;
+  font-weight: 900;
+}
+.decision-address {
+  margin-top: 10px;
+  color: #64748b;
+  font-size: 14px;
+}
+.decision-tags,
+.decision-facilities {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+}
+.decision-tags span,
+.decision-facilities span {
+  padding: 5px 10px;
+  border-radius: 14px;
+  color: #475569;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  font-size: 12px;
+  font-weight: 700;
+}
+.decision-side {
+  padding-left: 24px;
+  border-left: 1px solid #f1f5f9;
+}
+.decision-price {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+.decision-price-main {
+  color: #ff6b35;
+  font-size: 34px;
+  font-weight: 900;
+}
+.decision-price-unit {
+  color: #94a3b8;
+  font-size: 13px;
+}
+.decision-per {
+  margin-top: 2px;
+  color: #16a34a;
+  font-size: 14px;
+  font-weight: 800;
+}
+.decision-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-top: 14px;
+}
+.decision-metrics div {
+  padding: 10px 8px;
+  border-radius: 10px;
+  background: #f8fafc;
+  text-align: center;
+}
+.decision-metrics b {
+  display: block;
+  color: #1e293b;
+  font-size: 18px;
+}
+.decision-metrics span {
+  display: block;
+  margin-top: 2px;
+  color: #94a3b8;
+  font-size: 11px;
+}
+.decision-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 18px;
+}
+.decision-consult,
+.decision-book {
+  flex: 1;
+  height: 44px;
+  border-radius: 24px;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.decision-consult {
+  border: 1px solid #bbf7d0;
+  color: #16a34a;
+  background: #f0fdf4;
+}
+.decision-book {
+  border: none;
+  color: #fff;
+  background: linear-gradient(135deg, #ff6b35, #ff4500);
 }
 
 .detail-body {
@@ -809,13 +1082,132 @@ function downloadShareCard() {
 }
 .wechat-popup h3 { font-size: 18px; margin-bottom: 8px; }
 .wechat-popup p { font-size: 13px; color: #64748b; }
+.wechat-consult-text {
+  margin: 14px 0;
+  padding: 12px;
+  border-radius: 10px;
+  background: #f8fafc;
+  color: #334155;
+  font-size: 13px;
+  line-height: 1.7;
+  text-align: left;
+}
 .wechat-popup-id { font-size: 16px !important; color: #1e293b !important; font-weight: 600; margin-top: 12px !important; }
+.wechat-copy-btn {
+  margin-top: 16px;
+  border: none;
+  border-radius: 22px;
+  padding: 10px 28px;
+  color: #fff;
+  background: linear-gradient(135deg, #ff6b35, #ff4500);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.mobile-action-bar { display: none; }
+.mobile-consult-btn,
+.mobile-book-btn {
+  border: none;
+  border-radius: 24px;
+  height: 44px;
+  padding: 0 18px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.mobile-consult-btn {
+  color: #16a34a;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+}
+.mobile-book-btn {
+  color: #fff;
+  background: linear-gradient(135deg, #ff6b35, #ff4500);
+  min-width: 112px;
+}
+.mobile-price-box {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.mobile-price { color: #ff6b35; font-size: 22px; font-weight: 900; line-height: 1; }
+.mobile-unit { color: #94a3b8; font-size: 11px; margin-top: 3px; }
 
 /* 骨架屏 */
+.villa-detail-loading {
+  pointer-events: none;
+}
+.detail-loading-gallery {
+  width: 100%;
+  height: 500px;
+  border-radius: 12px;
+  margin-bottom: 30px;
+}
+.loading-card {
+  cursor: default;
+}
+.skeleton-block,
+.skeleton-line,
+.skeleton-button {
+  position: relative;
+  overflow: hidden;
+  background: #eef2f7;
+}
+.skeleton-block::after,
+.skeleton-line::after,
+.skeleton-button::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.68), transparent);
+  animation: skeleton-shimmer 1.3s infinite;
+}
+.skeleton-line {
+  height: 12px;
+  border-radius: 999px;
+}
+.skeleton-line.title {
+  width: 62%;
+  height: 28px;
+  margin-bottom: 16px;
+}
+.skeleton-line.card-title {
+  width: 140px;
+  height: 18px;
+  margin-bottom: 18px;
+}
+.skeleton-line.full {
+  width: 100%;
+  margin-bottom: 12px;
+}
+.skeleton-line.medium {
+  width: 76%;
+  margin-bottom: 12px;
+}
+.skeleton-line.short {
+  width: 42%;
+}
+.skeleton-line.price-loader {
+  width: 130px;
+  height: 34px;
+  margin-bottom: 18px;
+}
+.skeleton-button {
+  height: 48px;
+  border-radius: 24px;
+  margin-top: 20px;
+}
 .img-skeleton {
   position: absolute; inset: 0; z-index: 1;
   border-radius: 12px; background: #e2e8f0;
   animation: skeleton-pulse 1.5s ease-in-out infinite;
+}
+@keyframes skeleton-shimmer {
+  100% { transform: translateX(100%); }
 }
 @keyframes skeleton-pulse {
   0%, 100% { opacity: 1; }
@@ -830,5 +1222,162 @@ function downloadShareCard() {
 .img-error-inline {
   width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;
   background: #f1f5f9; color: #94a3b8; font-size: 13px; border-radius: 8px;
+}
+
+@media (max-width: 768px) {
+  .villa-detail {
+    padding: 0 0 calc(92px + env(safe-area-inset-bottom));
+  }
+  .gallery {
+    margin: 0 -12px 16px;
+  }
+  .main-image {
+    margin-bottom: 8px;
+  }
+  .main-gallery-image,
+  .main-gallery-placeholder {
+    height: 260px;
+    border-radius: 0;
+  }
+  .detail-loading-gallery {
+    height: 260px;
+    border-radius: 0;
+    margin-bottom: 16px;
+  }
+  .villa-detail-loading .side-col {
+    display: none;
+  }
+  .gallery-counter {
+    bottom: 12px;
+    right: 12px;
+  }
+  .gallery-arrow {
+    opacity: 1;
+    width: 36px;
+    height: 36px;
+    font-size: 22px;
+  }
+  .thumbnails {
+    overflow-x: auto;
+    padding: 0 12px 4px;
+  }
+  .thumb {
+    width: 76px;
+    height: 56px;
+    flex-shrink: 0;
+  }
+  .decision-card {
+    display: block;
+    margin: 0 0 12px;
+    padding: 18px;
+    border-radius: 10px;
+  }
+  .decision-main h1 {
+    font-size: 22px;
+  }
+  .decision-side {
+    padding-left: 0;
+    margin-top: 16px;
+    border-left: none;
+    border-top: 1px solid #f1f5f9;
+    padding-top: 14px;
+  }
+  .decision-tags,
+  .decision-facilities {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+  }
+  .decision-tags span,
+  .decision-facilities span {
+    flex-shrink: 0;
+  }
+  .decision-price-main {
+    font-size: 28px;
+  }
+  .decision-actions {
+    display: none;
+  }
+  .detail-body {
+    display: block;
+  }
+  .side-col {
+    display: none;
+  }
+  .card {
+    padding: 18px;
+    border-radius: 10px;
+    margin-bottom: 12px;
+  }
+  .title-row {
+    display: block;
+  }
+  .title-row h1 {
+    font-size: 22px;
+    line-height: 1.3;
+  }
+  .rating-badge {
+    display: inline-flex;
+    flex-direction: row;
+    gap: 6px;
+    align-items: center;
+    margin-top: 12px;
+    padding: 6px 12px;
+  }
+  .rating-score {
+    font-size: 18px;
+  }
+  .merchant-row,
+  .villa-meta {
+    flex-wrap: wrap;
+  }
+  .facility-grid {
+    gap: 8px;
+  }
+  .facility-chip {
+    padding: 7px 12px;
+  }
+  .description {
+    font-size: 14px;
+    line-height: 1.7;
+  }
+  .image-gallery {
+    gap: 12px;
+  }
+  .review {
+    gap: 10px;
+    padding: 16px 0;
+  }
+  .avatar {
+    width: 38px;
+    height: 38px;
+  }
+  .review-header {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .similar-grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  .share-card-wrap,
+  .wechat-popup {
+    width: calc(100% - 32px);
+    padding: 24px 20px;
+  }
+  .mobile-action-bar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 120;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    padding-bottom: max(10px, env(safe-area-inset-bottom));
+    background: rgba(255,255,255,0.96);
+    box-shadow: 0 -4px 18px rgba(15,23,42,0.12);
+    backdrop-filter: blur(12px);
+  }
 }
 </style>

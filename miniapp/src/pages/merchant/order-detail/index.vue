@@ -19,7 +19,8 @@
       </view>
       <view class="info-row">
         <text class="info-label">入住日期</text>
-        <text class="info-value">{{ formatDate(order.checkIn) }} ~ {{ formatDate(order.checkOut) }}</text>
+        <text class="info-value" v-if="order.slotName">{{ formatDate(order.checkIn) }} · {{ order.slotName }}</text>
+        <text class="info-value" v-else>{{ formatDate(order.checkIn) }} ~ {{ formatDate(order.checkOut) }}</text>
       </view>
       <view class="info-row">
         <text class="info-label">下单时间</text>
@@ -37,6 +38,31 @@
       <view class="info-row">
         <text class="info-label">手机</text>
         <text class="info-value">{{ order.user?.phone || '-' }}</text>
+      </view>
+    </view>
+
+    <!-- 入住登记 -->
+    <view class="card" v-if="order.pactSignedAt">
+      <text class="card-title">入住登记</text>
+      <view class="info-row">
+        <text class="info-label">带队人</text>
+        <text class="info-value">{{ order.leaderName || '-' }}</text>
+      </view>
+      <view class="info-row">
+        <text class="info-label">联系手机</text>
+        <text class="info-value">{{ order.leaderPhone || '-' }}</text>
+      </view>
+      <view class="info-row" v-if="order.leaderIdTail">
+        <text class="info-label">身份证后四位</text>
+        <text class="info-value">{{ order.leaderIdTail }}</text>
+      </view>
+      <view class="info-row" v-if="order.partySize">
+        <text class="info-label">实际到场人数</text>
+        <text class="info-value">{{ order.partySize }}人</text>
+      </view>
+      <view class="info-row">
+        <text class="info-label">公约签署</text>
+        <text class="info-value">{{ formatDateTime(order.pactSignedAt) }}</text>
       </view>
     </view>
 

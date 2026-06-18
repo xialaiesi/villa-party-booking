@@ -55,6 +55,35 @@ export function setAdminCalendar(id: number, dates: any[]) {
   return request<any>({ url: `/api/admin/villas/${id}/calendar`, method: 'PUT', data: { dates } });
 }
 
+export function getAdminVillaSlots(id: number) {
+  return request<any[]>({ url: `/api/admin/villas/${id}/slots` });
+}
+
+export function setAdminVillaSlots(id: number, slots: any[]) {
+  return request<any>({ url: `/api/admin/villas/${id}/slots`, method: 'PUT', data: { slots } });
+}
+
+// ==================== 实时管家会话 ====================
+export function getAdminChats() {
+  return request<any>({ url: '/api/admin/chat' });
+}
+
+export function getAdminChatUnread() {
+  return request<any>({ url: '/api/admin/chat/unread-count' });
+}
+
+export function getAdminChatFaq() {
+  return request<any>({ url: '/api/admin/chat/faq' });
+}
+
+export function getAdminChatMessages(chatId: number) {
+  return request<any>({ url: `/api/admin/chat/${chatId}/messages` });
+}
+
+export function sendAdminChatMessage(chatId: number, content: string, type = 'text') {
+  return request<any>({ url: `/api/admin/chat/${chatId}/messages`, method: 'POST', data: { content, type } });
+}
+
 // ==================== 订单管理 ====================
 export function getAdminOrders(params?: any) {
   return request<any>({ url: '/api/admin/orders', params });
